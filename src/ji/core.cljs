@@ -25,24 +25,29 @@
 (defn card-selector
   "todo: general partition/chunking buffer"
   [card-chan control-chan]
-  (let [c (chan)]
+  (let [out (chan)]
     (go
-      (loop [cs #{}]
+      (loop [cs #{}
+             paused? false]
         (let [[v sc] (alts! [card-chan control-chan])]
           (if (= sc control-chan)
-            (recur #{}) ;; currently only reset
-            (let [cs' (conj cs v)]
-              (cond
-                (= cs cs') (recur (disj cs v))
-                (<= 3 (count cs')) (do
-                                    (>! c cs')
-                                    (recur #{}))
-                :else (recur cs')))))))
-    c))
+            (condp = v
+              ;nil (close! out)
+              :pause (recur cs true)
+              :unpause (recur cs false)
+              :reset (recur #{} paused?))
+            (cond
+              ;(nil? v) (close! out)
+              paused? (recur cs paused?)
+              (cs v) (recur (disj cs v) paused?)
+              (<= 2 (count cs)) (do (>! out (conj cs v))
+                                    (recur #{} paused?))
+              :else (recur (conj cs v) paused?))))))
+    out))
 
 
 (defn add-card!
-  [card parent-el out]
+  [parent-el out card]
   (let [el (card-tmpl card)
         eh #(put! out card)]
     (dom/append! parent-el el)
@@ -52,8 +57,8 @@
      :unsubscribe #(dom/unlisten! el :click eh)}))
 
 (defn add-cards!
-  [cards parent-el out]
-  (map #(add-card! % parent-el out) cards))
+  [parent-el out cards]
+  (doall (for [card cards] (add-card! parent-el out card))))
 
 (defn render-solutions!
   [sets]
@@ -63,47 +68,48 @@
     (doseq [s sets]
       (dom/append! el (node [:div.set (map card-tmpl s)])))))
 
-(defn init []
-  (let [[board deck] (->> (new-deck) (shuffle) (separate 12))
-        control (chan)
-        card-sel (chan)
-        set-sel (card-selector card-sel control)
-        valid-sets (chan)
-        board (doall (map #(add-card! % (sel1 :#board) card-sel) board))
-
+(defn valid-sets-chan
+  [set-sel]
+  (let [out (chan)
         clear-selection #(doseq [el (sel :.card.selected)]
-                           (dom/remove-class! el "selected"))
-        ]
-
+                           (dom/remove-class! el "selected"))]
     (go-loop
       (let [cs (<! set-sel)]
         (clear-selection)
         (when (is-set? cs)
-          (>! valid-sets cs))))
+          (>! out cs))))
+    out))
 
-    (go
-      (loop [deck deck
-             board board]
-        (let [solutions (solve-board (map :card board))]
-         (render-solutions! solutions))
+(defn game-loop
+  [{:keys [deck board]} control card-sel valid-sets]
+  (go
+    (loop [deck deck
+           board board]
+      (let [solutions (solve-board (map :card board))]
+        (render-solutions! solutions))
+      (let [card-unsubs (hash-by :card :unsubscribe board) ;; todo
+            card-els (hash-by :card :el board) ;; todo
+            cs (<! valid-sets)]
+        (doseq [card cs :let [el (card-els card)] ]
+          ((card-unsubs card))
+          (dom/remove! el))
+        (dom/append! (sel1 :#set-history)
+                     (node [:li.set (map card-tmpl cs)]))
+        (recur (drop 3 deck)
+               (concat (remove #(cs (:card %)) board)
+                       (add-cards! (sel1 :#board) card-sel (take 3 deck))))))))
 
-        (let [card-unsubs (hash-by :card :unsubscribe board) ;; todo
-              card-els (hash-by :card :el board) ;; todo
-              cs (<! valid-sets)]
-          (doseq [card cs :let [el (card-els card)] ]
-            ((card-unsubs card))
-            (dom/remove! el))
-          (dom/append! (sel1 :#set-history)
-                       (node [:li.set (map card-tmpl cs)]))
-          (recur (drop 3 deck)
-                 (concat (remove #(cs (:card %)) board)
-                         (add-cards! (take 3 deck) (sel1 :#board) card-sel))))
-        ))
+(defn init []
+  (let [control (chan)
+        card-sel (chan)
+        valid-sets (valid-sets-chan (card-selector card-sel control))
+        [board deck] (->> (new-deck) (shuffle) (separate 12))
+        board (add-cards! (sel1 :#board) card-sel board)]
+    (dom/listen! [(sel1 :#content) :.card] :click
+                 #(-> (.-target %)
+                      (dom/closest :.card)
+                      (dom/toggle-class! "selected")))
 
-    (dom/listen! [(sel1 :#content) :.card]
-                 :click
-                 #(dom/toggle-class! (dom/closest (.-target %) :.card) "selected"))
-
-    ))
+    (game-loop {:deck deck :board board} control card-sel valid-sets)))
 
 (init)
