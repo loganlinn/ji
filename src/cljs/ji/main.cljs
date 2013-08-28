@@ -1,6 +1,8 @@
-(ns ji.core
+(ns ji.main
   (:require [ji.domain :refer [new-deck solve-board is-set?]]
+            [ji.websocket :as websocket]
             [dommy.core :as dom]
+            goog.net.WebSocket
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
             [ji.util.helpers :refer [event-chan map-chan copy-chan demux into-chan]])
@@ -8,7 +10,6 @@
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :as m :refer [go alt!]]
     [ji.util.macros :refer [go-loop]]))
-;; vim: setlocal lispwords+=go,go-loop
 
 (defn separate [n coll] [(take n coll) (drop n coll)])
 (defn hash-by [key-fn val-fn coll] (into {} (for [item coll] [(key-fn item) (val-fn item)])))
@@ -45,7 +46,6 @@
               :else (recur (conj cs v) paused?))))))
     out))
 
-
 (defn add-card!
   [parent-el out card]
   (let [el (card-tmpl card)
@@ -81,7 +81,7 @@
     out))
 
 (defn game-loop
-  [{:keys [deck board]} control card-sel valid-sets]
+  [{:keys [deck board board-el]} control card-sel valid-sets]
   (go
     (loop [deck deck
            board board]
@@ -97,19 +97,37 @@
                      (node [:li.set (map card-tmpl cs)]))
         (recur (drop 3 deck)
                (concat (remove #(cs (:card %)) board)
-                       (add-cards! (sel1 :#board) card-sel (take 3 deck))))))))
+                       (add-cards! board-el card-sel (take 3 deck))))))))
 
-(defn init []
+(deftemplate board-tmpl []
+  [:div.board])
+
+(defn start-game [{:keys [ws-uri root-el]}]
   (let [control (chan)
         card-sel (chan)
         valid-sets (valid-sets-chan (card-selector card-sel control))
+        ;ws-conn (chan)
+        ;ws-out (websocket/connect! ws-conn ws-uri)
         [board deck] (->> (new-deck) (shuffle) (separate 12))
-        board (add-cards! (sel1 :#board) card-sel board)]
+        board-el (board-tmpl)
+        board (add-cards! board-el card-sel board)]
+
+    (game-loop {:deck deck :board board :board-el board-el} control card-sel valid-sets)
+
+    (dom/append! root-el board-el)
+
     (dom/listen! [(sel1 :#content) :.card] :click
                  #(-> (.-target %)
                       (dom/closest :.card)
                       (dom/toggle-class! "selected")))
+    ))
 
-    (game-loop {:deck deck :board board} control card-sel valid-sets)))
-
-(init)
+(let [host (aget js/window "location" "host")]
+  (go
+    (let [
+          {:keys [conn uri in out]} (<! (websocket/connect! (str "ws://" host "/game/2")))]
+      (println conn uri in out)
+      (println "Recieved:" (<! out))
+      (>! in "sup?")
+      (>! in "yeah.")
+      (println "Doneski"))))
