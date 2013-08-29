@@ -5,10 +5,12 @@
             goog.net.WebSocket
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
+            [cljs.core.match]
             [ji.util.helpers :refer [event-chan map-chan copy-chan demux into-chan]])
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
-    [cljs.core.async.macros :as m :refer [go alt!]]
+    [cljs.core.async.macros :refer [go alt!]]
+    [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
 (defn separate [n coll] [(take n coll) (drop n coll)])
@@ -80,41 +82,58 @@
           (>! out cs))))
     out))
 
-(defn game-loop
-  [{:keys [deck board board-el]} control card-sel valid-sets]
+(defn remove-cards!
+  [board cards]
+  (let [{others false cs true} (group-by #(contains? cards (:card %)) board)]
+    (doseq [{:keys [unsubscribe el]} cs]
+      (unsubscribe)
+      (dom/remove! el))
+    others))
+
+(defn board-loop
+  [board-el {:keys [cards-in cards-out card-sel] :as chans}]
   (go
-    (loop [deck deck
-           board board]
-      (let [solutions (solve-board (map :card board))]
+    (loop [board []]
+      (let [solutions (solve-board (map :card board))] ;; removeme cheater
         (render-solutions! solutions))
-      (let [card-unsubs (hash-by :card :unsubscribe board) ;; todo
-            card-els (hash-by :card :el board) ;; todo
-            cs (<! valid-sets)]
-        (doseq [card cs :let [el (card-els card)] ]
-          ((card-unsubs card))
-          (dom/remove! el))
-        (dom/append! (sel1 :#set-history)
-                     (node [:li.set (map card-tmpl cs)]))
-        (recur (drop 3 deck)
-               (concat (remove #(cs (:card %)) board)
-                       (add-cards! board-el card-sel (take 3 deck))))))))
+      (match (alts! [cards-in cards-out])
+        [nil _] board
+        [v cards-in] (recur (concat board (add-cards! board-el card-sel v)))
+        [v cards-out] (recur (remove-cards! board v))))))
+
+(defn cleanup-board!
+  [board-chan]
+  (go (let [board (<! board-chan)]
+        (println "Cleaning up board")
+        (doseq [{:keys [unsubscribe el]} board]
+          (unsubscribe)
+          (dom/remove! el)))))
 
 (deftemplate board-tmpl []
   [:div.board])
 
-(defn start-game [{:keys [ws-uri root-el]}]
+(defn start-game [{:keys [ws-uri container]}]
   (let [control (chan)
         card-sel (chan)
         valid-sets (valid-sets-chan (card-selector card-sel control))
-        ;ws-conn (chan)
-        ;ws-out (websocket/connect! ws-conn ws-uri)
         [board deck] (->> (new-deck) (shuffle) (separate 12))
-        board-el (board-tmpl)
-        board (add-cards! board-el card-sel board)]
+        new-cards (chan)
+        old-cards (chan)
+        board-el (board-tmpl)]
 
-    (game-loop {:deck deck :board board :board-el board-el} control card-sel valid-sets)
+    (put! new-cards board)
+    (-> (board-loop board-el {:cards-in new-cards
+                              :cards-out old-cards
+                              :card-sel card-sel})
+        (cleanup-board!))
+    (go
+      (loop [deck deck]
+        (let [cs (<! valid-sets)]
+          (put! old-cards cs)
+          (put! new-cards (set (take (count cs) deck)))
+          (recur (drop (count cs) deck)))))
 
-    (dom/append! root-el board-el)
+    (dom/append! container board-el)
 
     (dom/listen! [(sel1 :#content) :.card] :click
                  #(-> (.-target %)
@@ -122,12 +141,17 @@
                       (dom/toggle-class! "selected")))
     ))
 
-(let [host (aget js/window "location" "host")]
-  (go
-    (let [
-          {:keys [conn uri in out]} (<! (websocket/connect! (str "ws://" host "/game/2")))]
-      (println conn uri in out)
-      (println "Recieved:" (<! out))
-      (>! in "sup?")
-      (>! in "yeah.")
-      (println "Doneski"))))
+
+(defn ^:export init []
+;(let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
+  ;(go
+    ;(let [{:keys [conn uri in out]} (<! (websocket/connect! ws-uri))]
+      ;(println conn uri in out)
+      ;(println "Recieved:" (<! out))
+      ;(>! in "sup?")
+      ;(>! in "yeah.")
+      ;(println "Doneski"))))
+
+  (start-game {:container (sel1 :#content)})
+  )
+

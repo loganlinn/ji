@@ -1,8 +1,9 @@
 <html>
   <head>
     <style type="text/css">
-      #board {
+      .board {
         width: 333px;
+        margin: 0 auto;
       }
       .card {
         display: inline-block;
@@ -13,10 +14,8 @@
       }
     </style>
   </head>
-  <body>
+  <body onload="ji.main.init();">
     <div id="content">
-      <div id="board">
-      </div>
       <ul id="set-history">
       </ul>
     </div>
