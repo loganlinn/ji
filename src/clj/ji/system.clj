@@ -5,15 +5,16 @@
             [ring.adapter.jetty :refer [run-jetty]]))
 
 (defn system []
-  {:connection-chan (chan)
+  {:clients (atom {})
+   :client-chan (chan)
    :port 8080})
 
-(defn start [system]
-  (service/register-ws-app! (:connection-chan system))
+(defn start [{:keys [clients client-chan] :as system}]
+  (service/register-ws-app! clients client-chan)
   (assoc system :server
          (run-jetty service/app
                     {:join? false :port (:port system)
-                     :configurator (ws/configurator (:connection-chan system))})))
+                     :configurator (ws/configurator client-chan)})))
 
 (defn stop [system]
   (when-let [server (:server system)]

@@ -4,7 +4,12 @@
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defn connect!
-  "Creates websocket to "
+  "Connects to a websocket. Returns a channel that, when connected, puts a
+  map with with keys,
+  :uri  The URI connected to
+  :ws   Raw Websocket object
+  :in   Channel to write values to socket on
+  :out  Channel to recieve socket data on"
   ([uri] (connect! uri {}))
   ([uri {:keys [in out]
                          :or {in chan out chan}}]
@@ -33,4 +38,5 @@
                    (close! out))))
 
          (<! on-connect)
-         {:uri uri :conn ws :in in :out out})))))
+         ;; swap in/out for more intuitive naming for receiver
+         {:uri uri :ws ws :out in :in out})))))

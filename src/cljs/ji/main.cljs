@@ -1,20 +1,24 @@
 (ns ji.main
-  (:require [ji.domain :refer [new-deck solve-board is-set?]]
+  (:require [ji.domain.game :refer [new-deck solve-board is-set?]]
+            [ji.domain.messages :as msg]
             [ji.websocket :as websocket]
             [dommy.core :as dom]
             goog.net.WebSocket
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
             [cljs.core.match]
-            [ji.util.helpers :refer [event-chan map-chan copy-chan demux into-chan]])
+            [cljs.reader :refer [register-tag-parser!]]
+            [ji.util.helpers :refer [event-chan map-source map-sink copy-chan into-chan]])
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :refer [go alt!]]
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
+(register-tag-parser! 'ji.domain.messages.ErrorMessage msg/map->ErrorMessage)
+(register-tag-parser! 'ji.domain.messages.GameStateMessage msg/map->GameStateMessage)
+
 (defn separate [n coll] [(take n coll) (drop n coll)])
-(defn hash-by [key-fn val-fn coll] (into {} (for [item coll] [(key-fn item) (val-fn item)])))
 
 (let [m {:solid "f" :striped "s" :outlined "e"
          :oval "o" :squiggle "s" :diamond "d"
@@ -23,7 +27,6 @@
   [:div.card
    [:img
     {:src (str "cards/" number (m fill) (m color) (m shape) ".png")}]]))
-
 
 (defn card-selector
   "todo: general partition/chunking buffer"
@@ -102,6 +105,7 @@
         [v cards-out] (recur (remove-cards! board v))))))
 
 (defn cleanup-board!
+  "Receives a board over channel, and cleans up the cards"
   [board-chan]
   (go (let [board (<! board-chan)]
         (println "Cleaning up board")
@@ -142,15 +146,23 @@
     ))
 
 
+(defn join-game
+  []
+  ;; get player name
+  ;; attempt join
+  ;; emit game
+  )
+
 (defn ^:export init []
-;(let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
-  ;(go
-    ;(let [{:keys [conn uri in out]} (<! (websocket/connect! ws-uri))]
-      ;(println conn uri in out)
-      ;(println "Recieved:" (<! out))
-      ;(>! in "sup?")
-      ;(>! in "yeah.")
-      ;(println "Doneski"))))
+  ;(println )
+  (let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
+    (go
+      (let [{:keys [in out]} (<! (websocket/connect! ws-uri))]
+        (println "Joining...")
+        (>! out (msg/map->JoinGameMessage {:player-id "logan"}))
+        (println "Joining...")
+        (println "Recieved:" (<! in))
+        (println "Doneski"))))
 
   (start-game {:container (sel1 :#content)})
   )

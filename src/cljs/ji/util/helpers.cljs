@@ -59,13 +59,6 @@
               :done))))
     cs))
 
-(defn demux [cs]
-  (let [out (chan)]
-    (go-loop
-      (let [[v _] (alts! cs)]
-        (>! out v)))
-    out))
-
 (defn into-chan
   [out cs]
   (go (loop [cs cs]
@@ -101,6 +94,30 @@
      (>! c (f (<! source))))
    c))
 
+(defn map-source
+  ([f source] (map-source (chan) f source))
+  ([c f source]
+   (go
+     (loop []
+       (if-let [v (f (<! source))]
+         (do
+           (>! c v)
+           (recur))
+         (close! c))))
+   c))
+
+(defn map-sink
+  ([f sink] (map-sink (chan) f sink))
+  ([c f sink]
+   (go
+     (loop []
+       (if-let [v (f (<! c))]
+         (do
+           (>! sink v)
+           (recur))
+         (close! c))))
+   c))
+
 (defn filter-chan
   ([f source] (filter-chan (chan) f source))
   ([c f source]
@@ -109,13 +126,6 @@
        (when (f v)
          (>! c v))))
    c))
-
-(defn jsonp-chan
-  ([uri] (jsonp-chan (chan) uri))
-  ([c uri]
-   (let [jsonp (goog.net.Jsonp. (goog.Uri. uri))]
-     (.send jsonp nil #(put! c %))
-     c)))
 
 (defn interval-chan
   ([msecs]

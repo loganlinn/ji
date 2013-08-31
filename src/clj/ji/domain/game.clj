@@ -1,4 +1,4 @@
-(ns ji.domain)
+(ns ji.domain.game)
 
 (def shapes  [:oval :squiggle :diamond])
 (def colors  [:red :purple :green])
@@ -42,3 +42,9 @@
                   sets)))
             #{}
             (for [a board b board :when (not= a b)] [a b]))))
+
+(defrecord Game [board players])
+
+(defn new-game []
+  (->Game (-> (new-deck) (shuffle))
+          {}))
