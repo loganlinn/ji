@@ -16,7 +16,9 @@
     [ji.util.macros :refer [go-loop]]))
 
 (register-tag-parser! 'ji.domain.messages.ErrorMessage msg/map->ErrorMessage)
+(register-tag-parser! 'ji.domain.messages.GameLeaveMessage msg/map->GameLeaveMessage)
 (register-tag-parser! 'ji.domain.messages.GameStateMessage msg/map->GameStateMessage)
+(register-tag-parser! 'ji.domain.messages.GameControlMessage msg/map->GameControlMessage)
 
 (defn separate [n coll] [(take n coll) (drop n coll)])
 
@@ -159,8 +161,7 @@
     (go
       (let [{:keys [in out]} (<! (websocket/connect! ws-uri))]
         (println "Joining...")
-        (>! out (msg/map->JoinGameMessage {:player-id "logan"}))
-        (println "Joining...")
+        (>! out (msg/map->GameJoinMessage {:player-id "logan"}))
         (println "Recieved:" (<! in))
         (println "Doneski"))))
 

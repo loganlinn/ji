@@ -43,8 +43,21 @@
             #{}
             (for [a board b board :when (not= a b)] [a b]))))
 
-(defrecord Game [board players])
+(defrecord Game [deck board players])
 
 (defn new-game []
   (->Game (-> (new-deck) (shuffle))
+          {}
           {}))
+
+(defn game-over? [game] (empty? (:deck game)))
+
+(defn add-player [game player-id]
+  (update-in game [:players] assoc player-id {:score 0}))
+
+(defn remove-player [game player-id]
+  (update-in game [:players] dissoc player-id))
+
+(defn update-player [game player-id f & args]
+  (apply update-in game [:players] f args))
+

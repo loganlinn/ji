@@ -1,29 +1,34 @@
 (ns ji.domain.messages)
 
-(defprotocol IMessage)
+(defprotocol IMessage
+  (valid? [this]))
 
 (defrecord ErrorMessage [message]
-  IMessage)
+  IMessage
+  (valid? [_] true))
 
-(defrecord GameStateMessage [state board players]
-  IMessage)
+(defrecord GameStateMessage [game]
+  IMessage
+  (valid? [_] true))
 
-(defrecord JoinGameMessage [player-id]
-  IMessage)
+(defrecord GameJoinMessage [player-id]
+  IMessage
+  (valid? [_] (not (clojure.string/blank? player-id))))
 
-(defrecord RequestControlMessage []
-  IMessage)
+(defrecord GameLeaveMessage [player-id]
+  IMessage
+  (valid? [_] true))
 
-(defrecord SubmitSetMessage [cards]
-  IMessage)
+(defrecord GameControlMessage []
+  IMessage
+  (valid? [_] true))
 
-;(def data-readers {})
-;(defn- add-msg-reader
-  ;[readers sym]
-  ;(merge readers
-         ;{}))
-;(defmacro defmessage [& record-args]
-  ;`(do
-     ;(defrecord ~@record-args)
-     ;(alter-var-root data-readers add-msg-reader ~(first record-args))))
+(defrecord PlayerSetMessage [cards]
+  IMessage
+  (valid? [_] true))
 
+;(extend-protocol IMessage
+  ;nil
+  ;(valid? [_] false)
+  ;Object
+  ;(valid? [_] false))

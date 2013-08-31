@@ -27,3 +27,21 @@
            (recur))
          (close! c))))
    c))
+
+(defn test-chan
+  []
+  (let [c-src (chan)
+        x (chan)]
+    (go
+      (loop [cs []]
+        (when-let [c (<! c-src)]
+          (println "NEW CHANNEL!" c cs)
+          (recur (conj cs c)))))
+    (>!! c-src (chan))
+    (>!! c-src (chan))
+    (>!! c-src (chan))
+    (close! c-src)
+    ))
+
+(comment
+  (test-chan))
