@@ -8,7 +8,6 @@
   ([c f source]
    (go
      (loop [k (<! source)]
-       (println "source-read" (pr-str k))
        (if-let [v (f k)]
          (do
            (>! c v)

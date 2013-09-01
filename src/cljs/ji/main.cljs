@@ -1,20 +1,23 @@
 (ns ji.main
-  (:require [ji.domain.game :refer [new-deck solve-board is-set?]]
+  (:require [ji.domain.game :as game
+             :refer [new-deck solve-board is-set?]]
             [ji.domain.messages :as msg]
             [ji.websocket :as websocket]
-            [dommy.core :as dom]
-            goog.net.WebSocket
+            [ji.util.helpers
+             :refer [event-chan map-source map-sink copy-chan into-chan]]
+            [clojure.set :as s]
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
             [cljs.core.match]
             [cljs.reader :refer [register-tag-parser!]]
-            [ji.util.helpers :refer [event-chan map-source map-sink copy-chan into-chan]])
+            [dommy.core :as dom])
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :refer [go alt!]]
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
+(register-tag-parser! 'ji.domain.game.Game game/map->Game)
 (register-tag-parser! 'ji.domain.messages.ErrorMessage msg/map->ErrorMessage)
 (register-tag-parser! 'ji.domain.messages.GameLeaveMessage msg/map->GameLeaveMessage)
 (register-tag-parser! 'ji.domain.messages.GameStateMessage msg/map->GameStateMessage)
@@ -22,13 +25,26 @@
 
 (defn separate [n coll] [(take n coll) (drop n coll)])
 
+(def current-server (atom nil))
+
 (let [m {:solid "f" :striped "s" :outlined "e"
          :oval "o" :squiggle "s" :diamond "d"
          :red "r" :green "g" :purple "b"}]
  (deftemplate card-tmpl [{:keys [shape color number fill] :as card}]
-  [:div.card
+  [:a.card
+   {:href "#"}
    [:img
-    {:src (str "cards/" number (m fill) (m color) (m shape) ".png")}]]))
+    {:src (str "cards/" number (m fill) (m color) (m shape) ".png")
+     :alt ""}]]))
+
+(deftemplate board-tmpl []
+  [:div.board])
+
+(deftemplate join-tmpl []
+  [:form.join-game
+   [:input {:type "text" :name "player-id" :placeholder "player name" :maxlength 16}]
+   [:input {:type "hidden" :name "game-id" :value 1}]
+   [:input {:type "submit" :value "join"}]])
 
 (defn card-selector
   "todo: general partition/chunking buffer"
@@ -54,18 +70,19 @@
     out))
 
 (defn add-card!
-  [parent-el out card]
+  [board-el out card]
   (let [el (card-tmpl card)
         eh #(put! out card)]
-    (dom/append! parent-el el)
+    (dom/append! board-el el)
     (dom/listen! el :click eh)
     {:card card
      :el el
      :unsubscribe #(dom/unlisten! el :click eh)}))
 
 (defn add-cards!
-  [parent-el out cards]
-  (doall (for [card cards] (add-card! parent-el out card))))
+  [board parent-el out cards]
+  (doall (concat board (for [card cards]
+                         (add-card! parent-el out card)))))
 
 (defn render-solutions!
   [sets]
@@ -95,30 +112,36 @@
       (dom/remove! el))
     others))
 
-(defn board-loop
-  [board-el {:keys [cards-in cards-out card-sel] :as chans}]
+(letfn [(on-card-click [e]
+          (-> (.-target e)
+              (dom/closest :.card)
+              (dom/toggle-class! "selected")))]
+  (defn listen-cards! [board-el]
+    (dom/listen! [board-el :.card] :click on-card-click))
+  (defn unlisten-cards! [board-el]
+    (dom/unlisten! [board-el :.card] :click on-card-click)))
+
+(defn go-board-ui
+  [container {:keys [+cards -cards card-sel] :as chans}]
   (go
     (loop [board []]
       (let [solutions (solve-board (map :card board))] ;; removeme cheater
         (render-solutions! solutions))
-      (match (alts! [cards-in cards-out])
-        [nil _] board
-        [v cards-in] (recur (concat board (add-cards! board-el card-sel v)))
-        [v cards-out] (recur (remove-cards! board v))))))
+      (match (alts! [+cards -cards])
+             [nil _] board
+             [v +cards] (recur (add-cards! board container card-sel v))
+             [v -cards] (recur (remove-cards! board v))))))
 
-(defn cleanup-board!
+(defn cleanup-board-ui!
   "Receives a board over channel, and cleans up the cards"
-  [board-chan]
-  (go (let [board (<! board-chan)]
-        (println "Cleaning up board")
-        (doseq [{:keys [unsubscribe el]} board]
-          (unsubscribe)
-          (dom/remove! el)))))
+  [board-ui board-el]
+  (go (doseq [{:keys [unsubscribe el]} (<! board-ui)]
+        (unsubscribe)
+        (dom/remove! el))
+      (unlisten-cards! board-el)
+      (dom/remove board-el)))
 
-(deftemplate board-tmpl []
-  [:div.board])
-
-(defn start-game [{:keys [ws-uri container]}]
+(defn start-game-solo [{:keys [container]}]
   (let [control (chan)
         card-sel (chan)
         valid-sets (valid-sets-chan (card-selector card-sel control))
@@ -128,10 +151,10 @@
         board-el (board-tmpl)]
 
     (put! new-cards board)
-    (-> (board-loop board-el {:cards-in new-cards
-                              :cards-out old-cards
-                              :card-sel card-sel})
-        (cleanup-board!))
+    (-> (go-board-ui board-el {:+cards new-cards
+                               :-cards old-cards
+                               :card-sel card-sel})
+        (cleanup-board-ui! board-el))
     (go
       (loop [deck deck]
         (let [cs (<! valid-sets)]
@@ -141,30 +164,66 @@
 
     (dom/append! container board-el)
 
-    (dom/listen! [(sel1 :#content) :.card] :click
-                 #(-> (.-target %)
-                      (dom/closest :.card)
-                      (dom/toggle-class! "selected")))
-    ))
+    (listen-cards! board-el)))
 
+(defn go-game [container in out]
+  (let [control (chan)
+        card-sel (chan)
+        sels (card-selector card-sel control)
+        +cards (chan)
+        -cards (chan)
+        board-el (board-tmpl)]
+
+    (go-loop
+      (when-let [cards (<! sels)]
+        (println "Selected" cards)
+        (>! out (msg/->PlayerSetMessage cards))
+        (doseq [el (sel :.card.selected)]
+          (dom/remove-class! el "selected"))))
+
+    (-> (go-board-ui board-el {:+cards +cards
+                               :-cards -cards
+                               :card-sel card-sel})
+        (cleanup-board-ui! board-el))
+
+    (go (loop [board #{}]
+          (when-let [msg (<! in)]
+            (println "INPUT" msg)
+            (cond
+              (instance? msg/GameStateMessage msg)
+              (let [board* (set (get-in msg [:game :board]))
+                    new-cards (s/difference board* board)
+                    old-cards (s/difference board board*)]
+                (>! +cards new-cards) (println "new" (count new-cards) new-cards)
+                (>! -cards old-cards) (println "old" (count old-cards) old-cards)
+                (recur board*))
+
+              :else
+              (do (println "UNHANDLED MSG" msg)
+                  (recur board)))
+            )))
+
+    (dom/append! container board-el)
+    (listen-cards! board-el)))
 
 (defn join-game
-  []
-  ;; get player name
-  ;; attempt join
-  ;; emit game
-  )
-
-(defn ^:export init []
-  ;(println )
+  [game-id player-id]
+  (println "Joining as" player-id)
+  ;; todo: clear existing server, if any
   (let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
     (go
-      (let [{:keys [in out]} (<! (websocket/connect! ws-uri))]
-        (println "Joining...")
-        (>! out (msg/map->GameJoinMessage {:player-id "logan"}))
-        (println "Recieved:" (<! in))
-        (println "Doneski"))))
+      (let [{:keys [in out] :as server} (<! (websocket/connect! ws-uri))]
+        (reset! current-server server)
+        (>! out (msg/map->GameJoinMessage {:player-id player-id}))
+        ;; TODO get join confirmation
+        (go-game (sel1 :#content) in out)))))
 
-  (start-game {:container (sel1 :#content)})
-  )
 
+(defn ^:export init []
+  (dom/append! (sel1 :#content) (join-tmpl))
+  (dom/listen! (sel1 :#content) :submit
+               (fn [e] (.preventDefault e)
+                 (->> [(sel1 (.-target e) "input[name='game-id']")
+                       (sel1 (.-target e) "input[name='player-id']")]
+                      (map dom/value)
+                      (apply join-game)))))

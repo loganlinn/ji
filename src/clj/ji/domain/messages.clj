@@ -1,4 +1,4 @@
-(ns ji.domain.messages)
+(ns ^:shared ji.domain.messages)
 
 (defprotocol IMessage
   (valid? [this]))
@@ -11,9 +11,11 @@
   IMessage
   (valid? [_] true))
 
-(defrecord GameJoinMessage [player-id]
+(defrecord GameJoinMessage [player-id color]
   IMessage
-  (valid? [_] (not (clojure.string/blank? player-id))))
+  (valid? [_]
+    (and (string? player-id)
+         (re-find #"^\w{1,16}$" player-id))))
 
 (defrecord GameLeaveMessage [player-id]
   IMessage
@@ -26,6 +28,11 @@
 (defrecord PlayerSetMessage [cards]
   IMessage
   (valid? [_] true))
+
+(defn game-state [& {:as fields}]
+  (let [game (dissoc (:game fields) :deck)]
+    (map->GameStateMessage
+      (assoc fields :game game))))
 
 ;(extend-protocol IMessage
   ;nil

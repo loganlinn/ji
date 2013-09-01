@@ -4,11 +4,11 @@
             [ji.util.async :refer [map-source map-sink]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
             [clojure.edn :as edn]
-            [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! close!]]
+            [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
             [compojure.core :refer [routes]]
             [compojure.route :as route])
-  (:import [ji.domain.messages GameJoinMessage]))
+  (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
 
 (def app
   (routes
@@ -25,23 +25,70 @@
 (defn client-read-string [data]
   (edn/read-string {:readers data-readers} data))
 
+(defn step-game
+  [{:keys [board deck] :as game}]
+  (let [num-add (- 12 (count board))]
+    (if (pos? num-add)
+      (game/draw-cards num-add game)
+      game)))
+
+(defn broadcast-game!
+  [game clients]
+  (let [msg (msg/game-state :game game)]
+    (doseq [{c :out} clients] ;; todo loop/alts! ?
+      (put! c msg)))
+  game)
+
+(defprotocol IGameMessage
+  (apply-message [_ game]))
+
+(extend-protocol IGameMessage
+  PlayerSetMessage
+  (apply-message [{:keys [cards player-id]} game]
+    (if (game/valid-set? game cards)
+      (game/take-set game player-id cards)
+      (game/revoke-set game player-id))))
+
+(defn- separate-client
+  "Returns [client other-clients] by identifying client by input channel"
+  [clients client-in]
+  (let [m (group-by #(= (:in %) client-in) clients)]
+    [(m true) (m false)]))
+
 (defn go-game
   [game join-msgs]
   (go
     (loop [game game
            clients []]
+      (println "------------------------------------------")
       (if-not (game-over? game)
         (let [[msg sc] (alts! (cons join-msgs (map :in clients)))]
           (if (= sc join-msgs)
-            (do
+            (let [{:keys [player-id client]} msg
+                  clients' (conj clients client)]
               (println "JOIN MSG" (count clients) msg)
-              (recur (game/add-player game (:player-id msg))
-                     (conj clients (:client msg))))
-            (do
-              (println "GAME MSG" msg sc)
-              (if-not (nil? msg)
-                (recur game clients)
-                (recur game (remove #(= (:in %) sc) clients))))
+              (recur (-> (game/add-player game player-id)
+                         (step-game)
+                         (broadcast-game! clients'))
+                     clients'))
+            (do (println "GAME MSG" msg sc)
+                (cond
+                  (nil? msg) ;; disconnect player
+                  (let [[client other-clients] (separate-client clients sc)]
+                    (recur (-> game
+                               (game/disconnect-player (:player-id client))
+                               (step-game)
+                               (broadcast-game! other-clients))
+                           other-clients))
+
+                  (satisfies? IGameMessage msg) ;; TODO validate
+                  (recur (-> (apply-message msg game)
+                             (step-game)
+                             (broadcast-game! clients))
+                         clients)
+                  :else
+                  (do (println "UNHANDLED" msg)
+                      (recur game clients))))
             ))
         {:game game :clients clients}))))
 
@@ -73,9 +120,9 @@
       (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
         (let [player-id (:player-id join-msg)
               assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
-              player-in (map-source assoc-player-id in)]
-          (join-game! game-envs uri
-                      (assoc join-msg :client {:in player-in :out out})))
+              player-in (map-source assoc-player-id in)
+              client {:in player-in :out out :player-id player-id}]
+          (join-game! game-envs uri (assoc join-msg :client client)))
         (do
           (>! out (msg/->ErrorMessage "You're strange"))
           (close! out))))))
