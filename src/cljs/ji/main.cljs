@@ -2,6 +2,7 @@
   (:require [ji.domain.game :as game
              :refer [new-deck solve-board is-set?]]
             [ji.domain.messages :as msg]
+            [ji.ui.players :as players-ui]
             [ji.websocket :as websocket]
             [ji.util.helpers
              :refer [event-chan map-source map-sink copy-chan into-chan]]
@@ -27,15 +28,19 @@
 
 (def current-server (atom nil))
 
+(defn attr-merge [a b] (if (string? a)
+                         (str a " " b)
+                         (merge a b)))
+
 (let [m {:solid "f" :striped "s" :outlined "e"
          :oval "o" :squiggle "s" :diamond "d"
          :red "r" :green "g" :purple "b"}]
- (deftemplate card-tmpl [{:keys [shape color number fill] :as card}]
-  [:a.card
-   {:href "#"}
-   [:img
-    {:src (str "cards/" number (m fill) (m color) (m shape) ".png")
-     :alt ""}]]))
+  (deftemplate card-tmpl [{:keys [shape color number fill] :as card} & {:as props}]
+    [:a.card
+     ^:attrs (merge-with attr-merge {:href "#"} props)
+     [:img
+      {:src (str "cards/" number (m fill) (m color) (m shape) ".png")
+       :alt ""}]]))
 
 (deftemplate board-tmpl []
   [:div.board])
@@ -86,7 +91,7 @@
 
 (defn render-solutions!
   [sets]
-  (let [el (node [:div#solution [:h4 "Sets"]])]
+  (let [el (node [:div#solution [:h2 "psst"]])]
     (if-let [x (sel1 :#solution)] (dom/remove! x))
     (dom/append! (sel1 :#content) el)
     (doseq [s sets]
@@ -166,12 +171,13 @@
 
     (listen-cards! board-el)))
 
-(defn go-game [container in out]
+(defn go-game [container in out player-id]
   (let [control (chan)
         card-sel (chan)
         sels (card-selector card-sel control)
         +cards (chan)
         -cards (chan)
+        *players (chan)
         board-el (board-tmpl)]
 
     (go-loop
@@ -181,10 +187,14 @@
         (doseq [el (sel :.card.selected)]
           (dom/remove-class! el "selected"))))
 
+    ;; board-ui
     (-> (go-board-ui board-el {:+cards +cards
                                :-cards -cards
                                :card-sel card-sel})
         (cleanup-board-ui! board-el))
+    ;; players-ui
+    (-> (players-ui/create! container card-tmpl player-id *players)
+        (players-ui/destroy! container))
 
     (go (loop [board #{}]
           (when-let [msg (<! in)]
@@ -196,6 +206,8 @@
                     old-cards (s/difference board board*)]
                 (>! +cards new-cards) (println "new" (count new-cards) new-cards)
                 (>! -cards old-cards) (println "old" (count old-cards) old-cards)
+                (when-let [players (get-in msg [:game :players])]
+                  (>! *players players))
                 (recur board*))
 
               :else
@@ -206,17 +218,23 @@
     (dom/append! container board-el)
     (listen-cards! board-el)))
 
+(defn start-game [container server player-id]
+  (go-game container (:in server) (:out server) player-id))
+
 (defn join-game
   [game-id player-id]
   (println "Joining as" player-id)
   ;; todo: clear existing server, if any
   (let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
     (go
-      (let [{:keys [in out] :as server} (<! (websocket/connect! ws-uri))]
-        (reset! current-server server)
-        (>! out (msg/map->GameJoinMessage {:player-id player-id}))
-        ;; TODO get join confirmation
-        (go-game (sel1 :#content) in out)))))
+      (let [{:keys [in out] :as server} (<! (websocket/connect! ws-uri))
+            msg (msg/join-game :player-id player-id)]
+        (if (msg/valid? msg)
+          (do (reset! current-server server)
+              (>! out msg)
+              ;; TODO get join confirmation
+              (start-game (sel1 :#content) server player-id))
+          (msg/error "Unable to join"))))))
 
 
 (defn ^:export init []
@@ -226,4 +244,6 @@
                  (->> [(sel1 (.-target e) "input[name='game-id']")
                        (sel1 (.-target e) "input[name='player-id']")]
                       (map dom/value)
-                      (apply join-game)))))
+                      (apply join-game)
+                      ;; todo read result of join-game
+                      ))))

@@ -7,6 +7,8 @@
   IMessage
   (valid? [_] true))
 
+(def error ->ErrorMessage)
+
 (defrecord GameStateMessage [game]
   IMessage
   (valid? [_] true))
@@ -16,6 +18,9 @@
   (valid? [_]
     (and (string? player-id)
          (re-find #"^\w{1,16}$" player-id))))
+
+(defn join-game [& {:as fields}]
+  (map->GameJoinMessage fields))
 
 (defrecord GameLeaveMessage [player-id]
   IMessage

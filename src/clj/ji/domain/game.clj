@@ -65,7 +65,7 @@
   (update-in game [:players] dissoc player-id))
 
 (defn update-player [game player-id f & args]
-  (apply update-in game [:players] f args))
+  (apply update-in game [:players player-id] f args))
 
 (defn disconnect-player [game player-id]
   (if player-id
