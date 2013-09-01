@@ -76,10 +76,13 @@
 
 (defn add-card!
   [board-el out card]
-  (let [el (card-tmpl card)
+  (let [el (card-tmpl card :class "new")
         eh #(put! out card)]
     (dom/append! board-el el)
     (dom/listen! el :click eh)
+    (go (<! (timeout 2000))
+        (doseq [e (sel board-el :.new)]
+          (dom/remove-class! e "new")))
     {:card card
      :el el
      :unsubscribe #(dom/unlisten! el :click eh)}))
@@ -104,9 +107,10 @@
                            (dom/remove-class! el "selected"))]
     (go-loop
       (let [cs (<! set-sel)]
-        (clear-selection)
         (when (is-set? cs)
-          (>! out cs))))
+          (>! out cs))
+        (<! (timeout 100))
+        (clear-selection)))
     out))
 
 (defn remove-cards!

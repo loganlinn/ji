@@ -29,9 +29,9 @@
 
 (deftemplate players-tmpl [card-tmpl player-id players]
   (println "players-tmpl" players)
-  [:div
+  [:div.players
    [:h2 "players"]
-   [:ul.players
+   [:ul
     (map #(player-tmpl card-tmpl (key %) (:sets (val %))) players)]])
 
 (defn go-players-ui [container players-chan render-fn]
