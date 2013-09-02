@@ -25,10 +25,10 @@
         eh #(put! card-sel card)]
     (dom/append! board-el el)
     (dom/listen! el :click eh)
-    (dom/add-class! el "new")
-    (go (<! (timeout 2000))
-        (doseq [e (sel board-el :.new)]
-          (dom/remove-class! e "new")))
+    (go
+      (dom/add-class! el "new")
+      (<! (timeout 2000))
+      (dom/remove-class! el "new"))
     {:card card
      :el el
      :unsubscribe #(dom/unlisten! el :click eh)}))
