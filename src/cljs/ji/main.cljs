@@ -28,16 +28,12 @@
 
 (def current-server (atom nil))
 
-(defn attr-merge [a b] (if (string? a)
-                         (str a " " b)
-                         (merge a b)))
-
 (let [m {:solid "f" :striped "s" :outlined "e"
          :oval "o" :squiggle "s" :diamond "d"
          :red "r" :green "g" :purple "b"}]
-  (deftemplate card-tmpl [{:keys [shape color number fill] :as card} & {:as props}]
+  (deftemplate card-tmpl [{:keys [shape color number fill] :as card}]
     [:a.card
-     ^:attrs (merge-with attr-merge {:href "#"} props)
+     {:href "#"}
      [:img
       {:src (str "cards/" number (m fill) (m color) (m shape) ".png")
        :alt ""}]]))
@@ -76,10 +72,11 @@
 
 (defn add-card!
   [board-el out card]
-  (let [el (card-tmpl card :class "new")
+  (let [el (card-tmpl card)
         eh #(put! out card)]
     (dom/append! board-el el)
     (dom/listen! el :click eh)
+    (dom/add-class! el "new")
     (go (<! (timeout 2000))
         (doseq [e (sel board-el :.new)]
           (dom/remove-class! e "new")))

@@ -25,12 +25,25 @@
 (defn client-read-string [data]
   (edn/read-string {:readers data-readers} data))
 
-(defn step-game
+(defn refill-board
+  "Returns game after filling board to 12 cards"
   [{:keys [board deck] :as game}]
   (let [num-add (- 12 (count board))]
     (if (pos? num-add)
       (game/draw-cards num-add game)
       game)))
+
+(defn fix-setless-board [game]
+  (loop [game game]
+    (if (empty? (game/solve-board (:board game)))
+      (recur (game/draw-cards 3 game))
+      game)))
+
+(defn step-game
+  [game]
+  (-> game
+      (refill-board)
+      (fix-setless-board)))
 
 (defn broadcast-game!
   [game clients]
