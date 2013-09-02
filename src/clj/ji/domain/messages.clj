@@ -32,12 +32,16 @@
 
 (defrecord PlayerSetMessage [cards]
   IMessage
-  (valid? [_] true))
+  (valid? [_] (= (count cards) 3)))
 
 (defn game-state [& {:as fields}]
-  (let [game (dissoc (:game fields) :deck)]
+  (let [game (:game fields)]
     (map->GameStateMessage
-      (assoc fields :game game))))
+      (assoc fields :game
+             (-> game
+                 (assoc :cards-remaining (count (:deck game)))
+                 (dissoc :deck)
+                 (dissoc :offline-players))))))
 
 ;(extend-protocol IMessage
   ;nil

@@ -26,5 +26,5 @@
   :cljsbuild {:builds [{:source-paths ["src/cljs"]
                         :compiler {:optimizations :whitespace
                                    :pretty-print true
-                                   :output-to "public/js/main.js"}}]
+                                   :output-to "out/public/js/main.js"}}]
               :crossovers [ji.domain]})

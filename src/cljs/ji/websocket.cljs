@@ -12,7 +12,7 @@
   :out  Channel to recieve socket data on"
   ([uri] (connect! uri {}))
   ([uri {:keys [in out]
-                         :or {in chan out chan}}]
+         :or {in chan out chan}}]
    (let [on-connect (chan)]
      (go
        (let [in (in)

@@ -10,8 +10,6 @@
                :number numbers
                :fill fills})
 
-(defn now [] :todo)
-
 (defn new-deck []
   (for [s shapes c colors n numbers f fills]
     {:shape s :color c :number n :fill f}))
@@ -34,7 +32,7 @@
             (assoc c3 feat (solve-feature feat (feat c1) (feat c2))))
           c1 (keys features)))
 
-(defn solve-board
+(defn solve-board ;; TODO Return LAZY sequence
   "Returns sets in board"
   [board]
   (let [s-board (set board)]
@@ -68,18 +66,6 @@
 
 (defn update-player [game player-id f & args]
   (apply update-in game [:players player-id] f args))
-
-(defn disconnect-player [game player-id]
-  (if player-id
-    (let [p (player game player-id)
-          p (assoc p :since (now))]
-     (-> game
-        (remove-player player-id)
-        (assoc-in [:players-offline player-id] (player game player-id))))
-    game))
-
-(defn disconnected-player? [game player-id]
-  (contains? (:players-offline game) player-id))
 
 (defn take-set [game player-id cards]
   (println "TAKE SET" player-id cards)

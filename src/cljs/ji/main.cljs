@@ -2,6 +2,8 @@
   (:require [ji.domain.game :as game
              :refer [new-deck solve-board is-set?]]
             [ji.domain.messages :as msg]
+            [ji.ui.card :refer [card-tmpl]]
+            [ji.ui.board :as board-ui]
             [ji.ui.players :as players-ui]
             [ji.websocket :as websocket]
             [ji.util.helpers
@@ -28,66 +30,40 @@
 
 (def current-server (atom nil))
 
-(let [m {:solid "f" :striped "s" :outlined "e"
-         :oval "o" :squiggle "s" :diamond "d"
-         :red "r" :green "g" :purple "b"}]
-  (deftemplate card-tmpl [{:keys [shape color number fill] :as card}]
-    [:a.card
-     {:href "#"}
-     [:img
-      {:src (str "cards/" number (m fill) (m color) (m shape) ".png")
-       :alt ""}]]))
-
-(deftemplate board-tmpl []
-  [:div.board])
-
 (deftemplate join-tmpl []
   [:form.join-game
-   [:input {:type "text" :name "player-id" :placeholder "player name" :maxlength 16}]
-   [:input {:type "hidden" :name "game-id" :value 1}]
-   [:input {:type "submit" :value "join"}]])
+   [:div.row
+    [:div.large-6.columns.large-centered
+     [:input {:type "hidden" :name "game-id" :value 1}]
+     [:row.row.collapse
+      [:div.small-10.columns
+       [:input {:type "text" :name "player-id" :placeholder "player name" :maxlength 16}]]
+      [:div.small-2.columns
+       [:input.button.postfix {:type "submit" :value "join"}]]]]]])
 
 (defn card-selector
   "todo: general partition/chunking buffer"
-  [card-chan control-chan]
-  (let [out (chan)]
-    (go
-      (loop [cs #{}
-             paused? false]
-        (let [[v sc] (alts! [card-chan control-chan])]
-          (if (= sc control-chan)
-            (condp = v
-              ;nil (close! out)
-              :pause (recur cs true)
-              :unpause (recur cs false)
-              :reset (recur #{} paused?))
-            (cond
-              ;(nil? v) (close! out)
-              paused? (recur cs paused?)
-              (cs v) (recur (disj cs v) paused?)
-              (<= 2 (count cs)) (do (>! out (conj cs v))
-                                    (recur #{} paused?))
-              :else (recur (conj cs v) paused?))))))
-    out))
+  ([card-chan] (card-selector (chan) card-chan))
+  ([c card-chan]
+   (go (loop [cs #{}]
+         (if (>= (count cs) 3)
+           (do (>! c cs) (recur #{}))
+           (let [v (<! card-chan)]
+             (cond
+               (nil? v) (close! c)
+               (cs v) (recur (disj cs v))
+               :else (recur (conj cs v)))))))
+   c))
 
-(defn add-card!
-  [board-el out card]
-  (let [el (card-tmpl card)
-        eh #(put! out card)]
-    (dom/append! board-el el)
-    (dom/listen! el :click eh)
-    (dom/add-class! el "new")
-    (go (<! (timeout 2000))
-        (doseq [e (sel board-el :.new)]
-          (dom/remove-class! e "new")))
-    {:card card
-     :el el
-     :unsubscribe #(dom/unlisten! el :click eh)}))
-
-(defn add-cards!
-  [board parent-el out cards]
-  (doall (concat board (for [card cards]
-                         (add-card! parent-el out card)))))
+(defn go-emit-selections [out card-sel]
+  (let [sels (card-selector card-sel)]
+    (go (loop []
+          (when-let [cards (<! sels)]
+            (println "Selected" cards)
+            (>! out (msg/->PlayerSetMessage cards))
+            (doseq [el (sel :.card.selected)]
+              (dom/remove-class! el "selected"))
+            (recur))))))
 
 (defn render-solutions!
   [sets]
@@ -97,127 +73,35 @@
     (doseq [s sets]
       (dom/append! el (node [:div.set (map card-tmpl s)])))))
 
-(defn valid-sets-chan
-  [set-sel]
-  (let [out (chan)
-        clear-selection #(doseq [el (sel :.card.selected)]
-                           (dom/remove-class! el "selected"))]
-    (go-loop
-      (let [cs (<! set-sel)]
-        (when (is-set? cs)
-          (>! out cs))
-        (<! (timeout 100))
-        (clear-selection)))
-    out))
-
-(defn remove-cards!
-  [board cards]
-  (let [{others false cs true} (group-by #(contains? cards (:card %)) board)]
-    (doseq [{:keys [unsubscribe el]} cs]
-      (unsubscribe)
-      (dom/remove! el))
-    others))
-
-(letfn [(on-card-click [e]
-          (-> (.-target e)
-              (dom/closest :.card)
-              (dom/toggle-class! "selected")))]
-  (defn listen-cards! [board-el]
-    (dom/listen! [board-el :.card] :click on-card-click))
-  (defn unlisten-cards! [board-el]
-    (dom/unlisten! [board-el :.card] :click on-card-click)))
-
-(defn go-board-ui
-  [container {:keys [+cards -cards card-sel] :as chans}]
-  (go
-    (loop [board []]
-      (let [solutions (solve-board (map :card board))] ;; removeme cheater
-        (render-solutions! solutions))
-      (match (alts! [+cards -cards])
-             [nil _] board
-             [v +cards] (recur (add-cards! board container card-sel v))
-             [v -cards] (recur (remove-cards! board v))))))
-
-(defn cleanup-board-ui!
-  "Receives a board over channel, and cleans up the cards"
-  [board-ui board-el]
-  (go (doseq [{:keys [unsubscribe el]} (<! board-ui)]
-        (unsubscribe)
-        (dom/remove! el))
-      (unlisten-cards! board-el)
-      (dom/remove board-el)))
-
-(defn start-game-solo [{:keys [container]}]
-  (let [control (chan)
-        card-sel (chan)
-        valid-sets (valid-sets-chan (card-selector card-sel control))
-        [board deck] (->> (new-deck) (shuffle) (separate 12))
-        new-cards (chan)
-        old-cards (chan)
-        board-el (board-tmpl)]
-
-    (put! new-cards board)
-    (-> (go-board-ui board-el {:+cards new-cards
-                               :-cards old-cards
-                               :card-sel card-sel})
-        (cleanup-board-ui! board-el))
-    (go
-      (loop [deck deck]
-        (let [cs (<! valid-sets)]
-          (put! old-cards cs)
-          (put! new-cards (set (take (count cs) deck)))
-          (recur (drop (count cs) deck)))))
-
-    (dom/append! container board-el)
-
-    (listen-cards! board-el)))
-
 (defn go-game [container in out player-id]
   (let [control (chan)
         card-sel (chan)
-        sels (card-selector card-sel control)
         +cards (chan)
         -cards (chan)
-        *players (chan)
-        board-el (board-tmpl)]
-
-    (go-loop
-      (when-let [cards (<! sels)]
-        (println "Selected" cards)
-        (>! out (msg/->PlayerSetMessage cards))
-        (doseq [el (sel :.card.selected)]
-          (dom/remove-class! el "selected"))))
-
-    ;; board-ui
-    (-> (go-board-ui board-el {:+cards +cards
-                               :-cards -cards
-                               :card-sel card-sel})
-        (cleanup-board-ui! board-el))
-    ;; players-ui
-    (-> (players-ui/create! container card-tmpl player-id *players)
+        *players (chan)]
+    (go-emit-selections out card-sel)
+    (-> (board-ui/create! container +cards -cards card-sel)
+        (board-ui/destroy! container))
+    (-> (players-ui/create! container player-id *players)
         (players-ui/destroy! container))
-
+    ;; driver loop
     (go (loop [board #{}]
           (when-let [msg (<! in)]
             (println "INPUT" msg)
             (cond
               (instance? msg/GameStateMessage msg)
               (let [board* (set (get-in msg [:game :board]))
-                    new-cards (s/difference board* board)
-                    old-cards (s/difference board board*)]
-                (>! +cards new-cards) (println "new" (count new-cards) new-cards)
-                (>! -cards old-cards) (println "old" (count old-cards) old-cards)
-                (when-let [players (get-in msg [:game :players])]
-                  (>! *players players))
+                    players* (get-in msg [:game :players])]
+                (>! +cards (s/difference board* board))
+                (>! -cards (s/difference board board*))
+                (>! *players players*)
+                (render-solutions! (solve-board board*)) ;; removeme cheater
                 (recur board*))
 
               :else
               (do (println "UNHANDLED MSG" msg)
                   (recur board)))
-            )))
-
-    (dom/append! container board-el)
-    (listen-cards! board-el)))
+            )))))
 
 (defn start-game [container server player-id]
   (go-game container (:in server) (:out server) player-id))

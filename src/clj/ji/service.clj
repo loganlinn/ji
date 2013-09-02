@@ -12,6 +12,7 @@
 
 (def app
   (routes
+    (route/files "/" {:root "out/public"})
     (route/files "/" {:root "public"})))
 
 (def data-readers
@@ -25,7 +26,7 @@
 (defn client-read-string [data]
   (edn/read-string {:readers data-readers} data))
 
-(defn refill-board
+(defn fill-board
   "Returns game after filling board to 12 cards"
   [{:keys [board deck] :as game}]
   (let [num-add (- 12 (count board))]
@@ -41,9 +42,7 @@
 
 (defn step-game
   [game]
-  (-> game
-      (refill-board)
-      (fix-setless-board)))
+  (-> game (fill-board) (fix-setless-board)))
 
 (defn broadcast-game!
   [game clients]
@@ -66,7 +65,18 @@
   "Returns [client other-clients] by identifying client by input channel"
   [clients client-in]
   (let [m (group-by #(= (:in %) client-in) clients)]
-    [(m true) (m false)]))
+    [(first (m true)) (m false)]))
+
+(defn disconnect-player [game player-id]
+  (if player-id
+    (let [p (game/player game player-id)]
+      (-> game
+          (game/remove-player player-id)
+          (assoc-in [:players-offline player-id] p)))
+    game))
+
+(defn disconnected-player? [game player-id]
+  (contains? (:players-offline game) player-id))
 
 (defn go-game
   [game join-msgs]
@@ -89,7 +99,7 @@
                   (nil? msg) ;; disconnect player
                   (let [[client other-clients] (separate-client clients sc)]
                     (recur (-> game
-                               (game/disconnect-player (:player-id client))
+                               (disconnect-player (:player-id client))
                                (step-game)
                                (broadcast-game! other-clients))
                            other-clients))
