@@ -59,7 +59,9 @@
   (get-in game [:players player-id]))
 
 (defn add-player [game player-id]
-  (update-in game [:players] assoc player-id {:sets []}))
+  (if (get-in game [:players player-id])
+    game
+    (update-in game [:players] assoc player-id {:sets []})))
 
 (defn remove-player [game player-id]
   (update-in game [:players] dissoc player-id))
