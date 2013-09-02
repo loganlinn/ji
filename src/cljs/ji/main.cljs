@@ -92,8 +92,8 @@
               (instance? msg/GameStateMessage msg)
               (let [board* (set (get-in msg [:game :board]))
                     players* (get-in msg [:game :players])]
-                (>! +cards (s/difference board* board))
                 (>! -cards (s/difference board board*))
+                (>! +cards (s/difference board* board))
                 (>! *players players*)
                 (render-solutions! (solve-board board*)) ;; removeme cheater
                 (recur board*))
@@ -131,4 +131,10 @@
                       (map dom/value)
                       (apply join-game)
                       ;; todo read result of join-game
-                      ))))
+                      )))
+  (let [dict "abcdefghijklmnopqrstuvwxyz"
+        gen-username (apply str (for [x (range 5)] (rand-nth dict)))]
+    (go (<! (timeout 50))
+        (dom/set-value! (sel1 "input[name='player-id']") gen-username)
+        (<! (timeout 10))
+        (dom/fire! (sel1 "input[type=submit]") :click))))

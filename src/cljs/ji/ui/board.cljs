@@ -16,34 +16,51 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
+(defn- card-placeholder [] (node [:div.card-placeholder]))
+
+(deftemplate board-row-tmpl []
+  [:div.row.collapsed (for [x (range 3)] [:div.small-4.columns (card-placeholder)])])
+
 (deftemplate board-tmpl []
-  [:div.board])
+  [:div.board.small-12.large-8.large-centered.columns
+   (for [x (range 4)] (board-row-tmpl))])
+
+(defn add-board-row! [board-el]
+  (println "Adding row to board")
+  (dom/append! board-el (board-row-tmpl)))
+
+(defn next-placeholder [board-el]
+  (if-let [ph (sel1 board-el :.card-placeholder)]
+    ph
+    (do (add-board-row! board-el)
+        (sel1 board-el :.card-placeholder))))
 
 (defn add-card!
   [board-el card-sel card]
   (let [el (card-tmpl card)
         eh #(put! card-sel card)]
-    (dom/append! board-el el)
+    (dom/replace! (next-placeholder board-el) el)
     (dom/listen! el :click eh)
-    (go
-      (dom/add-class! el "new")
-      (<! (timeout 2000))
-      (dom/remove-class! el "new"))
+    (go (dom/add-class! el "new")
+        (<! (timeout 2000))
+        (dom/remove-class! el "new"))
     {:card card
      :el el
      :unsubscribe #(dom/unlisten! el :click eh)}))
 
 (defn add-cards!
   [board parent-el card-sel cards]
+  (println "Adding cards:" cards)
   (doall (concat board (for [card cards]
                          (add-card! parent-el card-sel card)))))
 
 (defn remove-cards!
   [board cards]
+  (println "removing cards" cards)
   (let [{others false cs true} (group-by #(contains? cards (:card %)) board)]
     (doseq [{:keys [unsubscribe el]} cs]
       (unsubscribe)
-      (dom/remove! el))
+      (dom/replace! el (card-placeholder)))
     others))
 
 (letfn [(on-card-click [e]
@@ -59,7 +76,7 @@
   [container +cards -cards card-sel]
   (go
     (loop [board []]
-      (match (alts! [+cards -cards])
+      (match (alts! [-cards +cards] :priority true)
              [nil _] board
              [v +cards] (recur (add-cards! board container card-sel v))
              [v -cards] (recur (remove-cards! board v))))))
