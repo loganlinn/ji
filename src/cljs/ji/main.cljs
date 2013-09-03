@@ -129,26 +129,30 @@
         join-submit (chan)]
     (clear! container)
     (dom/append! container (join-tmpl))
-    (dom/listen! (sel1 :form.join-game) :submit
-                 (fn [e] (.preventDefault e)
-                   (put! join-submit e)))
+    (dom/listen-once! (sel1 :form.join-game) :submit
+                      (fn [e] (.preventDefault e)
+                        (put! join-submit e)))
     (go (let [e (<! join-submit)
               t (.-target e)
               game-id (dom/value (sel1 t "input[name='game-id']"))
               player-id (dom/value (sel1 t "input[name='player-id']"))
               msg (<! (join-game container game-id player-id))]
+          (clear! (sel1 :#messages))
           (if (msg/error? msg)
-            (dom/prepend! container
-                          (node [:div.alert-box {:data-alert true}
-                                 (:message msg)]))
+            (dom/append! (sel1 :#messages)
+                         (node [:div.alert-box {:data-alert true}
+                                (:message msg)]))
             (do (dom/remove! (sel1 :form.join-game))
                 (let [final (<! msg)]
-                  (println "final" final)))))))
+                  (dom/append! (sel1 :#messages)
+                               (node [:div.alert-box {:data-alert true}
+                                      "Disconnected from server"]))
+                  (init)))))))
 
-  (let [dict "abcdefghijklmnopqrstuvwxyz"
-        username (apply str (for [x (range 5)] (rand-nth dict)))]
-    (go (<! (timeout 50))
-        (dom/set-value! (sel1 "input[name='player-id']") username)
-        (<! (timeout 12))
-        (dom/fire! (sel1 "input[type=submit]") :click)))
+  ;(let [dict "abcdefghijklmnopqrstuvwxyz"
+  ;username (apply str (for [x (range 5)] (rand-nth dict)))]
+  ;(go (<! (timeout 50))
+  ;(dom/set-value! (sel1 "input[name='player-id']") username)
+  ;(<! (timeout 12))
+  ;(dom/fire! (sel1 "input[type=submit]") :click)))
   )

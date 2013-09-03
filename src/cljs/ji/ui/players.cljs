@@ -49,7 +49,6 @@
           (if (= players players')
             (recur players)
             (let [node (players-tmpl player-id players')]
-              (println players')
               (dom/remove! (sel1 container :.players))
               (dom/append! (sel1 :#content) node)
               (recur players')))
