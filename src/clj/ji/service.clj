@@ -6,12 +6,13 @@
             [clojure.edn :as edn]
             [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
-            [compojure.core :refer [routes]]
+            [compojure.core :refer [routes GET]]
             [compojure.route :as route])
   (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
 
 (def app
   (routes
+    (GET "/" [] {:status 302 :headers {"Location" "/index.html"} :body ""})
     (route/files "/" {:root "out/public"})
     (route/files "/" {:root "public"})))
 
@@ -34,7 +35,10 @@
       (game/draw-cards num-add game)
       game)))
 
-(defn fix-setless-board [game]
+(defn fix-setless-board
+  "If game's board contains sets, returns game as-is, otherwise, adds 3 cards
+  until at least 1 set exists on board"
+  [game]
   (loop [game game]
     (if (empty? (game/solve-board (:board game)))
       (recur (game/draw-cards 3 game))
@@ -72,36 +76,32 @@
   (go
     (loop [game game
            clients []]
-      (println "------------------------------------------")
       (if-not (game-over? game)
         (let [[msg sc] (alts! (cons join-msgs (map :in clients)))]
           (if (= sc join-msgs)
             (let [{:keys [player-id client]} msg
                   clients' (conj clients client)]
-              (println "JOIN MSG" (count clients) msg)
               (recur (-> (game/add-player game player-id)
                          (step-game)
                          (broadcast-game! clients'))
                      clients'))
-            (do (println "GAME MSG" msg sc)
-                (cond
-                  (nil? msg) ;; disconnect player
-                  (let [[client other-clients] (separate-client clients sc)]
-                    (recur (-> game
-                               (game/disconnect-player (:player-id client))
-                               (step-game)
-                               (broadcast-game! other-clients))
-                           other-clients))
-
-                  (satisfies? IGameMessage msg) ;; TODO validate
-                  (recur (-> (apply-message msg game)
+            (do
+              (cond
+                (nil? msg) ;; disconnect player
+                (let [[client other-clients] (separate-client clients sc)]
+                  (recur (-> game
+                             (game/disconnect-player (:player-id client))
                              (step-game)
-                             (broadcast-game! clients))
-                         clients)
-                  :else
-                  (do (println "UNHANDLED" msg)
-                      (recur game clients))))
-            ))
+                             (broadcast-game! other-clients))
+                         other-clients))
+
+                (satisfies? IGameMessage msg) ;; TODO validate
+                (recur (-> (apply-message msg game)
+                           (step-game)
+                           (broadcast-game! clients))
+                       clients)
+                :else
+                (recur game clients)))))
         {:game game :clients clients}))))
 
 (defn init-game-env!
