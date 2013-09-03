@@ -22,7 +22,7 @@
 (defn add-card!
   [board-el card-sel card]
   (let [el (node [:li [:a {:href "#"} (card-tmpl card)]])
-        eh #(put! card-sel card)]
+        eh #(do (.preventDefault %) (put! card-sel card))]
     (dom/append! board-el el)
     (dom/listen! el :click eh)
     (go (dom/add-class! el "new")

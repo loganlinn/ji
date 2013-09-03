@@ -1,5 +1,6 @@
 (ns ^:shared ji.domain.game
-  (:require [ji.util :as util :refer [now]]
+  (:require [ji.domain.player :as p]
+            [ji.util :as util :refer [now]]
             [clojure.set :as s]))
 
 (def shapes  [:oval :squiggle :diamond])
@@ -57,26 +58,31 @@
 (defn player [game player-id]
   (get-in game [:players player-id]))
 
+(defn update-player [game player-id f & args]
+  (apply update-in game [:players player-id] f args))
+
 (defn add-player [game player-id]
-  (if (get-in game [:players player-id])
-    game
-    (update-in game [:players] assoc player-id {:sets []})))
+  (if-let [plr (player game player-id)]
+    (if (p/offline? plr)
+      (update-player game player-id p/go-online)
+      game)
+    (update-in game [:players] assoc player-id (p/new-player))))
 
 (defn remove-player [game player-id]
   (update-in game [:players] dissoc player-id))
 
-(defn update-player [game player-id f & args]
-  (apply update-in game [:players player-id] f args))
-
 (defn disconnect-player [game player-id]
   (if player-id
-    (update-player game player-id
-                   #(-> % (dissoc :online-since)
-                        (assoc :offline-since (now))))
+    (update-player game player-id p/go-offline)
     game))
 
+(defn has-player? [game player-id]
+  (contains? (:players game) player-id))
+
 (defn player-offline? [game player-id]
-  (contains? (player game player-id) :offline-since))
+  (if-let [plr (player game player-id)]
+    (p/offline? plr)
+    true))
 
 (defn take-set [game player-id cards]
   (println "TAKE SET" player-id cards)

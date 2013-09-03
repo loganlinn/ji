@@ -54,6 +54,8 @@
 // @import "foundation/components/tooltips";
 // @import "foundation/components/dropdown";
 
+@import "compass/reset/utilities";
+
 .card {
   display: inline-block;
 }
@@ -63,14 +65,13 @@
   $bg: #d9d9d9;
   @include panel($bg);
 
-
   li {
     text-align: center;
     padding: 0;
   }
   a {
     display: inline-block;
-    padding: 1em;
+    padding: 1em 1.75em;
   }
   .selected {
     background-color: $selected-color;
@@ -79,4 +80,53 @@
     background-color: lighten($bg, 10%);
   }
 }
+.players {
+  ul {
+    margin: 0;
+  }
+  li {
+    @include reset-list-style;
+  }
+}
+.player {
+  & {
+    @include panel;
+    padding: 1em;
+    float:left;
+    position: relative;
+  }
 
+  &.self {
+    margin-right: 3px;
+  }
+
+  &:hover .sets {
+    display:block;
+  }
+
+  &.online .online-ind {
+    background-color: green;
+  }
+
+  .online-ind {
+    background-color: #ccc;
+    height: 5px;
+    width: 5px;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+  }
+
+  .sets {
+    & {
+      display: none;
+    }
+    .card {
+      display: inline;
+    }
+    img {
+      width: 33px;
+      height: auto;
+    }
+  }
+}

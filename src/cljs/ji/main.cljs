@@ -1,6 +1,7 @@
 (ns ji.main
   (:require [ji.domain.game :as game
              :refer [new-deck solve-board is-set?]]
+            [ji.domain.player :as player]
             [ji.domain.messages :as msg]
             [ji.ui.card :refer [card-tmpl]]
             [ji.ui.board :as board-ui]
@@ -21,6 +22,7 @@
     [ji.util.macros :refer [go-loop]]))
 
 (register-tag-parser! 'ji.domain.game.Game game/map->Game)
+(register-tag-parser! 'ji.domain.player.Player player/map->Player)
 (register-tag-parser! 'ji.domain.messages.ErrorMessage msg/map->ErrorMessage)
 (register-tag-parser! 'ji.domain.messages.GameLeaveMessage msg/map->GameLeaveMessage)
 (register-tag-parser! 'ji.domain.messages.GameStateMessage msg/map->GameStateMessage)
@@ -95,7 +97,7 @@
                 (>! -cards (s/difference board board*))
                 (>! +cards (s/difference board* board))
                 (>! *players players*)
-                (render-solutions! (solve-board board*)) ;; removeme cheater
+                ;(render-solutions! (solve-board board*)) ;; removeme cheater
                 (recur board*))
 
               :else
@@ -136,11 +138,12 @@
               player-id (dom/value (sel1 t "input[name='player-id']"))
               msg (<! (join-game container game-id player-id))]
           (if (msg/error? msg)
-            (dom/prepend! container (node [:div.alert-box {:data-alert true}
-                                           (:message msg)]))
-            (let [final (<! msg)]
-              (println "final" final)))
-          (println msg))))
+            (dom/prepend! container
+                          (node [:div.alert-box {:data-alert true}
+                                 (:message msg)]))
+            (do (dom/remove! (sel1 :form.join-game))
+                (let [final (<! msg)]
+                  (println "final" final)))))))
 
   (let [dict "abcdefghijklmnopqrstuvwxyz"
         username (apply str (for [x (range 5)] (rand-nth dict)))]
