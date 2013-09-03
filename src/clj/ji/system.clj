@@ -1,4 +1,5 @@
 (ns ji.system
+  (:gen-class)
   (:require [ji.service :as service]
             [clojure.core.async :refer [chan]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
@@ -20,3 +21,6 @@
   (when-let [server (:server system)]
     (.stop server))
   (dissoc system :server))
+
+(defn -main [& args]
+  (start (system)))
