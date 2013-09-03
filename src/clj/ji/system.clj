@@ -9,7 +9,7 @@
 (defn system []
   {:game-envs (atom {})
    :client-chan (chan)
-   :port (:port env 8080)})
+   :port (Integer/parseInt (:port env "8080"))})
 
 (defn start [{:keys [game-envs client-chan] :as system}]
   (service/register-ws-app! game-envs client-chan)
