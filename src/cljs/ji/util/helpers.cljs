@@ -4,12 +4,18 @@
      :refer [<! >! chan close! sliding-buffer dropping-buffer
              put! timeout]]
     [dommy.core :as dom]
+    [dommy.template]
     [goog.net.Jsonp]
     [goog.Uri])
   (:require-macros
     [cljs.core.async.macros :as m :refer [go alt!]]
     [dommy.macros :refer [sel sel1]]
     [ji.util.macros :refer [go-loop]]))
+
+(defn clear! ;; Remove when dommy "0.1.2" released
+  "clears all children from `elem`"
+  [elem]
+  (set! (.-innerHTML (dommy.template/->node-like elem)) ""))
 
 ;; =============================================================================
 ;; Printing

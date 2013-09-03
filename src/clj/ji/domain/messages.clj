@@ -8,6 +8,7 @@
   (valid? [_] true))
 
 (def error ->ErrorMessage)
+(defn error? [msg] (instance? ErrorMessage msg))
 
 (defrecord GameStateMessage [game]
   IMessage

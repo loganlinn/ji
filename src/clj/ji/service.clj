@@ -67,17 +67,6 @@
   (let [m (group-by #(= (:in %) client-in) clients)]
     [(first (m true)) (m false)]))
 
-(defn disconnect-player [game player-id]
-  (if player-id
-    (let [p (game/player game player-id)]
-      (-> game
-          (game/remove-player player-id)
-          (assoc-in [:players-offline player-id] p)))
-    game))
-
-(defn disconnected-player? [game player-id]
-  (contains? (:players-offline game) player-id))
-
 (defn go-game
   [game join-msgs]
   (go
@@ -99,7 +88,7 @@
                   (nil? msg) ;; disconnect player
                   (let [[client other-clients] (separate-client clients sc)]
                     (recur (-> game
-                               (disconnect-player (:player-id client))
+                               (game/disconnect-player (:player-id client))
                                (step-game)
                                (broadcast-game! other-clients))
                            other-clients))

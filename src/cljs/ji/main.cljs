@@ -7,7 +7,7 @@
             [ji.ui.players :as players-ui]
             [ji.websocket :as websocket]
             [ji.util.helpers
-             :refer [event-chan map-source map-sink copy-chan into-chan]]
+             :refer [clear! event-chan map-source map-sink copy-chan into-chan]]
             [clojure.set :as s]
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
@@ -107,7 +107,7 @@
   (go-game container (:in server) (:out server) player-id))
 
 (defn join-game
-  [game-id player-id]
+  [container game-id player-id]
   (println "Joining as" player-id)
   ;; todo: clear existing server, if any
   (let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
@@ -118,23 +118,34 @@
           (do (reset! current-server server)
               (>! out msg)
               ;; TODO get join confirmation
-              (start-game (sel1 :#content) server player-id))
+              (start-game container server player-id))
           (msg/error "Unable to join"))))))
 
 
 (defn ^:export init []
-  (dom/append! (sel1 :#content) (join-tmpl))
-  (dom/listen! (sel1 :#content) :submit
-               (fn [e] (.preventDefault e)
-                 (->> [(sel1 (.-target e) "input[name='game-id']")
-                       (sel1 (.-target e) "input[name='player-id']")]
-                      (map dom/value)
-                      (apply join-game)
-                      ;; todo read result of join-game
-                      )))
+  (let [container (sel1 :#content)
+        join-submit (chan)]
+    (clear! container)
+    (dom/append! container (join-tmpl))
+    (dom/listen! (sel1 :form.join-game) :submit
+                 (fn [e] (.preventDefault e)
+                   (put! join-submit e)))
+    (go (let [e (<! join-submit)
+              t (.-target e)
+              game-id (dom/value (sel1 t "input[name='game-id']"))
+              player-id (dom/value (sel1 t "input[name='player-id']"))
+              msg (<! (join-game container game-id player-id))]
+          (if (msg/error? msg)
+            (dom/prepend! container (node [:div.alert-box {:data-alert true}
+                                           (:message msg)]))
+            (let [final (<! msg)]
+              (println "final" final)))
+          (println msg))))
+
   (let [dict "abcdefghijklmnopqrstuvwxyz"
-        gen-username (apply str (for [x (range 5)] (rand-nth dict)))]
+        username (apply str (for [x (range 5)] (rand-nth dict)))]
     (go (<! (timeout 50))
-        (dom/set-value! (sel1 "input[name='player-id']") gen-username)
-        (<! (timeout 10))
-        (dom/fire! (sel1 "input[type=submit]") :click))))
+        (dom/set-value! (sel1 "input[name='player-id']") username)
+        (<! (timeout 12))
+        (dom/fire! (sel1 "input[type=submit]") :click)))
+  )

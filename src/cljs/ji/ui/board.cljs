@@ -16,30 +16,14 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
-(defn- card-placeholder [] (node [:div.card-placeholder]))
-
-(deftemplate board-row-tmpl []
-  [:div.row.collapsed (for [x (range 3)] [:div.small-4.columns (card-placeholder)])])
-
 (deftemplate board-tmpl []
-  [:div.board.small-12.large-8.large-centered.columns
-   (for [x (range 4)] (board-row-tmpl))])
-
-(defn add-board-row! [board-el]
-  (println "Adding row to board")
-  (dom/append! board-el (board-row-tmpl)))
-
-(defn next-placeholder [board-el]
-  (if-let [ph (sel1 board-el :.card-placeholder)]
-    ph
-    (do (add-board-row! board-el)
-        (sel1 board-el :.card-placeholder))))
+  [:ul.board.small-block-grid-3])
 
 (defn add-card!
   [board-el card-sel card]
-  (let [el (card-tmpl card)
+  (let [el (node [:li [:a {:href "#"} (card-tmpl card)]])
         eh #(put! card-sel card)]
-    (dom/replace! (next-placeholder board-el) el)
+    (dom/append! board-el el)
     (dom/listen! el :click eh)
     (go (dom/add-class! el "new")
         (<! (timeout 2000))
@@ -50,27 +34,27 @@
 
 (defn add-cards!
   [board parent-el card-sel cards]
-  (println "Adding cards:" cards)
+  ;(println "Adding cards:" cards)
   (doall (concat board (for [card cards]
                          (add-card! parent-el card-sel card)))))
 
 (defn remove-cards!
   [board cards]
-  (println "removing cards" cards)
+  ;(println "Removing cards" cards)
   (let [{others false cs true} (group-by #(contains? cards (:card %)) board)]
     (doseq [{:keys [unsubscribe el]} cs]
       (unsubscribe)
-      (dom/replace! el (card-placeholder)))
+      (dom/remove! el))
     others))
 
 (letfn [(on-card-click [e]
           (-> (.-target e)
-              (dom/closest :.card)
+              (dom/closest :a)
               (dom/toggle-class! "selected")))]
   (defn listen-cards! [board-el]
-    (dom/listen! [board-el :.card] :click on-card-click))
+    (dom/listen! [board-el :a] :click on-card-click))
   (defn unlisten-cards! [board-el]
-    (dom/unlisten! [board-el :.card] :click on-card-click)))
+    (dom/unlisten! [board-el :a] :click on-card-click)))
 
 (defn go-board-ui
   [container +cards -cards card-sel]
@@ -90,9 +74,9 @@
 (defn destroy!
   [c container]
   (go
-    (doseq [{:keys [unsubscribe el]} (<! c)]
-      (unsubscribe)
-      (dom/remove! el))
     (let [board-el (sel1 container :.board)]
+      (doseq [{:keys [unsubscribe el]} (<! c)]
+        (unsubscribe)
+        (dom/remove! el))
       (unlisten-cards! board-el)
       (dom/remove board-el))))

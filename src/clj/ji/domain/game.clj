@@ -1,5 +1,6 @@
 (ns ^:shared ji.domain.game
-  (:require [clojure.set :as s]))
+  (:require [ji.util :as util :refer [now]]
+            [clojure.set :as s]))
 
 (def shapes  [:oval :squiggle :diamond])
 (def colors  [:red :purple :green])
@@ -66,6 +67,16 @@
 
 (defn update-player [game player-id f & args]
   (apply update-in game [:players player-id] f args))
+
+(defn disconnect-player [game player-id]
+  (if player-id
+    (update-player game player-id
+                   #(-> % (dissoc :online-since)
+                        (assoc :offline-since (now))))
+    game))
+
+(defn player-offline? [game player-id]
+  (contains? (player game player-id) :offline-since))
 
 (defn take-set [game player-id cards]
   (println "TAKE SET" player-id cards)
