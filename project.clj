@@ -23,8 +23,14 @@
   :test-paths ["test/clj"]
 
   :plugins [[lein-cljsbuild "0.3.2"]]
-  :cljsbuild {:builds [{:source-paths ["src/cljs"]
+  :cljsbuild {:builds {:dev
+                       {:source-paths ["src/cljs"]
                         :compiler {:optimizations :whitespace
                                    :pretty-print true
-                                   :output-to "out/public/js/main.js"}}]
+                                   :output-to "out/public/js/main.js"}}
+                       :prod
+                       {:source-paths ["src/cljs"]
+                        :compiler {:optimizations :advanced
+                                   :pretty-print false
+                                   :output-to "out/public/js/main.js"}}}
               :crossovers [ji.domain]})
