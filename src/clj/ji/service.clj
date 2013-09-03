@@ -112,6 +112,7 @@
         m {:game-chan game-chan
            :join-chan join-chan}]
     (swap! game-envs assoc game-id m)
+    (go (<! game-chan) (swap! game-envs dissoc game-id))
     m))
 
 (defn get-game-env!
