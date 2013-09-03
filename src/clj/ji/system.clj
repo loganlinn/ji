@@ -1,6 +1,7 @@
 (ns ji.system
   (:gen-class)
   (:require [ji.service :as service]
+            [environ.core :refer [env]]
             [clojure.core.async :refer [chan]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
             [ring.adapter.jetty :refer [run-jetty]]))
@@ -8,7 +9,7 @@
 (defn system []
   {:game-envs (atom {})
    :client-chan (chan)
-   :port 8080})
+   :port (:port env 8080)})
 
 (defn start [{:keys [game-envs client-chan] :as system}]
   (service/register-ws-app! game-envs client-chan)
