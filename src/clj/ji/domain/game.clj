@@ -34,17 +34,16 @@
             (assoc c3 feat (solve-feature feat (feat c1) (feat c2))))
           c1 (keys features)))
 
-(defn solve-board ;; TODO Return LAZY sequence
-  "Returns sets in board"
+(defn solve-board
+  "Returns lazy sequence of sets on board"
   [board]
-  (let [s-board (set board)]
-    (reduce (fn [sets [a b]]
-              (let [c (solve-set a b)]
-                (if (contains? s-board c)
-                  (conj sets #{a b c})
-                  sets)))
-            #{}
-            (for [a board b board :when (not= a b)] [a b]))))
+  (let [solve-pair (fn [[c1 c2]]
+                     (if-let [c3 (board (solve-set c1 c2))]
+                       #{c1 c2 c3}))]
+    (->> (for [a board b board :when (not= a b)] [a b])
+         (map solve-pair)
+         (keep identity)
+         (distinct))))
 
 (defrecord Game [deck board players])
 
