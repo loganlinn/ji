@@ -52,7 +52,8 @@
               :board #{}
               :players {}}))
 
-(defn game-over? [game] (empty? (:deck game)))
+(defn game-over? [{:keys [deck board]}]
+  (empty? (solve-board (into board deck))))
 
 (defn player [game player-id]
   (get-in game [:players player-id]))
