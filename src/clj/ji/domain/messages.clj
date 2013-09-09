@@ -14,6 +14,10 @@
   IMessage
   (valid? [_] true))
 
+(defrecord GameFinishMessage [game]
+  IMessage
+  (valid? [_] true))
+
 (defrecord GameJoinMessage [player-id color]
   IMessage
   (valid? [_]

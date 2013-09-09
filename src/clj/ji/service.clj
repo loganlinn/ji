@@ -48,11 +48,14 @@
   [game]
   (-> game (fill-board) (fix-setless-board)))
 
+(defn broadcast-msg!
+  [msg clients]
+  (doseq [{c :out} clients]
+    (put! c msg)))
+
 (defn broadcast-game!
   [game clients]
-  (let [msg (msg/game-state :game game)]
-    (doseq [{c :out} clients] ;; todo loop/alts! ?
-      (put! c msg)))
+  (broadcast-msg! (msg/game-state :game game) clients)
   game)
 
 (defprotocol IGameMessage
@@ -71,12 +74,18 @@
   (let [m (group-by #(= (:in %) client-in) clients)]
     [(first (m true)) (m false)]))
 
+(defn- finish-game!
+  [game clients]
+  (broadcast-msg! (msg/map->GameFinishMessage {:game game}) clients)
+  game)
+
 (defn go-game
   [game join-msgs]
   (go
     (loop [game game
            clients []]
-      (if-not (game-over? game)
+      (if (game-over? game)
+        (finish-game! game clients)
         (let [[msg sc] (alts! (cons join-msgs (map :in clients)))]
           (if (= sc join-msgs)
             (let [{:keys [player-id client]} msg
@@ -85,24 +94,22 @@
                          (step-game)
                          (broadcast-game! clients'))
                      clients'))
-            (do
-              (cond
-                (nil? msg) ;; disconnect player
-                (let [[client other-clients] (separate-client clients sc)]
-                  (recur (-> game
-                             (game/disconnect-player (:player-id client))
-                             (step-game)
-                             (broadcast-game! other-clients))
-                         other-clients))
-
-                (satisfies? IGameMessage msg) ;; TODO validate
-                (recur (-> (apply-message msg game)
+            (cond
+              (nil? msg) ;; disconnect player
+              (let [[client other-clients] (separate-client clients sc)]
+                (recur (-> game
+                           (game/disconnect-player (:player-id client))
                            (step-game)
-                           (broadcast-game! clients))
-                       clients)
-                :else
-                (recur game clients)))))
-        {:game game :clients clients}))))
+                           (broadcast-game! other-clients))
+                       other-clients))
+
+              (satisfies? IGameMessage msg) ;; TODO validate
+              (recur (-> (apply-message msg game)
+                         (step-game)
+                         (broadcast-game! clients))
+                     clients)
+              :else
+              (recur game clients))))))))
 
 (defn init-game-env!
   [game-envs game-id]
