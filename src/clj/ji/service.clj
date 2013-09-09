@@ -160,13 +160,3 @@
         (->> (<! client-chan)
              (wrap-client-chan)
              (client-join game-envs)))))
-
-(comment
-  (match [conn]
-         [{:uri uri :in in :out out}]
-         (go
-           (>! in (str "Yo, " uri))
-           (loop []
-             (when-let [msg (<! out)]
-               (prn msg)
-               (recur))))))
