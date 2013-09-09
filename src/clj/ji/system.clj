@@ -14,7 +14,7 @@
 (defn start [{:keys [game-envs client-chan] :as system}]
   (service/register-ws-app! game-envs client-chan)
   (assoc system :server
-         (run-jetty service/app
+         (run-jetty (service/create-app game-envs)
                     {:join? false :port (:port system)
                      :configurator (ws/configurator client-chan)})))
 

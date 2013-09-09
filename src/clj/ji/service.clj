@@ -1,17 +1,22 @@
 (ns ji.service
-  (:require [ji.domain.game :as game :refer [new-game game-over?]]
+  (:require [ji.service.lobby :as lobby]
+            [ji.domain.game :as game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
             [ji.util.async :refer [map-source map-sink]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
             [clojure.edn :as edn]
             [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
+            [hiccup.core :refer [html]]
             [compojure.core :refer [routes GET]]
             [compojure.route :as route])
   (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
 
-(def app
+(defrecord GameEnv [game clients join-chan])
+
+(defn create-app [game-envs]
   (routes
+    (GET "/games" [] (lobby/render-lobby @game-envs))
     (GET "/" [] {:status 302 :headers {"Location" "/index.html"} :body ""})
     (route/files "/" {:root "out/public"})
     (route/files "/" {:root "public"})))
@@ -58,7 +63,6 @@
   (broadcast-msg! (msg/game-state :game game) clients)
   game)
 
-(defrecord GameEnv [game clients])
 
 (defprotocol IGameMessage
   (apply-message [_ game-env]))
@@ -82,55 +86,61 @@
   game)
 
 (defn go-game
-  [game-env join-msgs]
-  (go
-    (loop [{:keys [game clients] :as game-env} game-env]
-      (if (game-over? game)
-        (finish-game! game-env)
-        (match (alts! (cons join-msgs (map :in clients)))
-          [nil join-msgs] (finish-game! game-env)
+  [game-env]
+  (go (loop []
+        (let [{:keys [game clients join-chan]} @game-env]
+          (println join-chan)
+          (if (game-over? game)
+            (finish-game! @game-env)
+            (match (alts! (cons join-chan (map :in clients)))
+                   [nil join-chan] (finish-game! @game-env)
 
-          ;; Player Join
-          [msg join-msgs]
-          (let [{:keys [player-id client]} msg
-                clients' (conj clients client)]
-            (recur (assoc game-env
-                          :game (-> (game/add-player game player-id)
-                                    (step-game)
-                                    (broadcast-game! clients'))
-                          :clients clients')))
+                   ;; Player Join
+                   [msg join-chan]
+                   (let [{:keys [player-id client]} msg
+                         clients' (conj clients client)]
+                     (do (swap! game-env assoc
+                                :game (-> (game/add-player game player-id)
+                                          (step-game)
+                                          (broadcast-game! clients'))
+                                :clients clients')
+                         (recur)))
 
-          ;; Player Disconnect
-          [nil sc]
-          (let [[client other-clients] (separate-client clients sc)]
-            (recur (assoc game-env
-                          :game (-> game
-                                    (game/disconnect-player (:player-id client))
-                                    (step-game)
-                                    (broadcast-game! other-clients))
-                          :clients other-clients)))
+                   ;; Player Disconnect
+                   [nil sc]
+                   (let [[client other-clients] (separate-client clients sc)]
+                     (do (swap! game-env
+                                assoc
+                                :game (-> game
+                                          (game/disconnect-player (:player-id client))
+                                          (step-game)
+                                          (broadcast-game! other-clients))
+                                :clients other-clients)
+                         (recur)))
 
-          ;; GameMessage
-          [(msg :guard #(satisfies? IGameMessage %)) sc]
-          (recur (assoc game-env
-                        :game (-> (apply-message msg game-env)
-                                  (step-game)
-                                  (broadcast-game! clients))))
+                   ;; GameMessage
+                   [(msg :guard #(satisfies? IGameMessage %)) sc]
+                   (do (swap! game-env assoc
+                              :game (-> (apply-message msg @game-env)
+                                        (step-game)
+                                        (broadcast-game! clients)))
+                       (recur))
 
-          ;; Unknown Input
-          :else (recur game-env))))))
+                   ;; Unknown Input
+                   :else (recur)))))))
 
 (defn init-game-env!
   [game-envs game-id]
   (let [game (new-game)
-        game-env (map->GameEnv {:game game :clients []})
         join-chan (chan)
-        game-chan (go-game game-env join-chan)
-        m {:game-chan game-chan
-           :join-chan join-chan}]
-    (swap! game-envs assoc game-id m)
+        game-env (atom (map->GameEnv {:game-id game-id
+                                      :game game
+                                      :clients []
+                                      :join-chan join-chan}))
+        game-chan (go-game game-env)]
+    (swap! game-envs assoc game-id game-env)
     (go (<! game-chan) (swap! game-envs dissoc game-id))
-    m))
+    @game-env))
 
 (defn get-game-env!
   "Gets or inits new game"
