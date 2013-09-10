@@ -1,6 +1,5 @@
 (ns ji.service
-  (:require [ji.service.lobby :as lobby]
-            [ji.service.game :as game-view]
+  (:require [ji.service.templates :as tmpl]
             [ji.domain.game :as game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
             [ji.util.async :refer [map-source map-sink]]
@@ -10,27 +9,18 @@
             [clojure.core.match :refer [match]]
             [hiccup.core :refer [html]]
             [hiccup.page :as page]
-            [compojure.core :refer [routes GET]]
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.util.response :as resp]
+            [compojure.core :refer [routes GET POST]]
             [compojure.route :as route])
   (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
 
 (defrecord GameEnv [id game clients join-chan])
 
-(defn create-app [game-envs]
-  (routes
-    (GET "/games" []
-         (page/html5
-           (page/include-css "stylesheets/app.css")
-           (lobby/render-lobby @game-envs)))
-    (GET "/games/:game-id" [game-id]
-         (if-let [game-env (get @game-envs game-id)]
-           (page/html5
-             (page/include-css "/stylesheets/app.css")
-             (game-view/render-game @game-env))
-           (route/not-found "Game not found")))
-    (GET "/" [] {:status 302 :headers {"Location" "/index.html"} :body ""})
-    (route/files "/" {:root "out/public"})
-    (route/files "/" {:root "public"})))
+(defn render-page [content]
+  (page/html5
+    (page/include-css "/stylesheets/app.css")
+    content))
 
 (def data-readers
   {'ji.domain.messages.ErrorMessage #'msg/map->ErrorMessage
@@ -152,32 +142,54 @@
     (go (<! game-chan) (swap! game-envs dissoc game-id))
     game-env))
 
-(defn get-game-env!
-  "Gets or inits new game"
-  [game-envs game-id]
-  (let [env @(dosync (or (get @game-envs game-id)
-                        (init-game-env! game-envs game-id)))]
-    env))
+(defn parse-game-id [uri]
+  (second (re-find #"(?:/game/)?(\d+)" uri)))
+
+(defn create-app [game-envs]
+  (-> (routes
+        (POST "/games" {{game-id "game-id"} :params uri :uri}
+              (if-let [game-id (parse-game-id game-id)]
+                (let [game-env (init-game-env! game-envs game-id)]
+                  (resp/redirect-after-post (str "/games/" game-id)))
+                (-> (resp/response "Invalid game")
+                    (resp/status 400))))
+        (GET "/games" []
+             (render-page (tmpl/render-lobby @game-envs)))
+        (GET "/games/:game-id" [game-id]
+             (if-let [game-env (get @game-envs game-id)]
+               (render-page
+                 (tmpl/render-game @game-env))
+               (route/not-found
+                 (render-page (tmpl/render-game-create game-id)))))
+        (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
+        (route/files "/" {:root "out/public"})
+        (route/files "/" {:root "public"}))
+      (wrap-params)))
+
 
 (defn join-game!
   [game-envs game-id join-msg client]
-  (let [game-env (get-game-env! game-envs game-id)]
-    (>!! (:join-chan game-env) (assoc join-msg :client client))))
+  (if-let [game-env (@game-envs game-id)]
+    (go (>! (:join-chan @game-env) (assoc join-msg :client client)))
+    (go (println "INVALID GAME!!" game-id)
+        (>! (:out client) (msg/error "Unknown game"))
+        (close! (:out client)))))
 
 (defn client-join
   [game-envs {:keys [uri in out] :as client}]
-  (go
-    (when-let [join-msg (<! in)]
-      (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
-        (let [player-id (:player-id join-msg)
-              assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
-              player-in (map-source assoc-player-id in)
-              client {:in player-in :out out :player-id player-id}
-              game-id (or (->> uri (re-find #"/game/(\d+)") second) "1")]
-          (join-game! game-envs game-id join-msg client))
-        (do
-          (>! out (msg/->ErrorMessage "You're strange"))
-          (close! out))))))
+  (if-let [game-id (parse-game-id uri)]
+    (go
+      (when-let [join-msg (<! in)]
+        (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
+          (let [player-id (:player-id join-msg)
+                assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
+                player-in (map-source assoc-player-id in)
+                client {:in player-in :out out :player-id player-id}]
+            (join-game! game-envs game-id join-msg client))
+          (do
+            (>! out (msg/->ErrorMessage "You're strange"))
+            (close! out)))))
+    (close! out)))
 
 (defn wrap-client-chan
   "Reverse the in/out for our sanity, and communicate via edn"

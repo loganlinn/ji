@@ -32,11 +32,11 @@
 
 (def current-server (atom nil))
 
-(deftemplate join-tmpl []
+(deftemplate join-tmpl [game-id]
   [:form.join-game
    [:div.row
     [:div.large-6.columns.large-centered
-     [:input {:type "hidden" :name "game-id" :value 1}]
+     [:input {:type "hidden" :name "game-id" :value game-id}]
      [:row.row.collapse
       [:div.small-10.columns
        [:input {:type "text" :name "player-id" :placeholder "player name" :maxlength 16}]]
@@ -133,9 +133,10 @@
 
 (defn ^:export init []
   (let [container (sel1 :#content)
-        join-submit (chan)]
+        join-submit (chan)
+        game-id (dom/attr (sel1 :body) "data-game-id")]
     (clear! container)
-    (dom/append! container (join-tmpl))
+    (dom/append! container (join-tmpl game-id))
     (dom/listen-once! (sel1 :form.join-game) :submit
                       (fn [e] (.preventDefault e)
                         (put! join-submit e)))
@@ -154,10 +155,10 @@
                   (show-alert! "Disconnected from server")
                   (init)))))))
 
-  (let [dict "abcdefghijklmnopqrstuvwxyz"
-        username (apply str (for [x (range 5)] (rand-nth dict)))]
-    (go (<! (timeout 50))
-        (dom/set-value! (sel1 "input[name='player-id']") username)
-        (<! (timeout 12))
-        (dom/fire! (sel1 "input[type=submit]") :click)))
+  ;(let [dict "abcdefghijklmnopqrstuvwxyz"
+        ;username (apply str (for [x (range 5)] (rand-nth dict)))]
+    ;(go (<! (timeout 50))
+        ;(dom/set-value! (sel1 "input[name='player-id']") username)
+        ;(<! (timeout 12))
+        ;(dom/fire! (sel1 "input[type=submit]") :click)))
   )
