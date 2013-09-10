@@ -8,6 +8,6 @@
   (deftemplate card-tmpl [{:keys [shape color number fill] :as card}]
     [:span.card
      [:img
-      {:src (str "cards/" number (m fill) (m color) (m shape) ".png")
+      {:src (str "/cards/" number (m fill) (m color) (m shape) ".png")
        :alt ""}]]))
 

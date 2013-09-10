@@ -16,7 +16,8 @@
   (assoc system :server
          (run-jetty (service/create-app game-envs)
                     {:join? false :port (:port system)
-                     :configurator (ws/configurator client-chan)})))
+                     :configurator (ws/configurator client-chan
+                                                    {:path "/games"})})))
 
 (defn stop [system]
   (when-let [server (:server system)]

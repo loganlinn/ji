@@ -1,5 +1,6 @@
 (ns ji.service
   (:require [ji.service.lobby :as lobby]
+            [ji.service.game :as game-view]
             [ji.domain.game :as game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
             [ji.util.async :refer [map-source map-sink]]
@@ -8,15 +9,25 @@
             [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
             [hiccup.core :refer [html]]
+            [hiccup.page :as page]
             [compojure.core :refer [routes GET]]
             [compojure.route :as route])
   (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
 
-(defrecord GameEnv [game clients join-chan])
+(defrecord GameEnv [id game clients join-chan])
 
 (defn create-app [game-envs]
   (routes
-    (GET "/games" [] (lobby/render-lobby @game-envs))
+    (GET "/games" []
+         (page/html5
+           (page/include-css "stylesheets/app.css")
+           (lobby/render-lobby @game-envs)))
+    (GET "/games/:game-id" [game-id]
+         (if-let [game-env (get @game-envs game-id)]
+           (page/html5
+             (page/include-css "/stylesheets/app.css")
+             (game-view/render-game @game-env))
+           (route/not-found "Game not found")))
     (GET "/" [] {:status 302 :headers {"Location" "/index.html"} :body ""})
     (route/files "/" {:root "out/public"})
     (route/files "/" {:root "public"})))
@@ -80,7 +91,7 @@
   (let [m (group-by #(= (:in %) client-in) clients)]
     [(first (m true)) (m false)]))
 
-(defn- finish-game!
+(defn- exit-game!
   [{:keys [game clients]}]
   (broadcast-msg! (msg/map->GameFinishMessage {:game game}) clients)
   game)
@@ -89,11 +100,10 @@
   [game-env]
   (go (loop []
         (let [{:keys [game clients join-chan]} @game-env]
-          (println join-chan)
           (if (game-over? game)
-            (finish-game! @game-env)
+            (exit-game! @game-env)
             (match (alts! (cons join-chan (map :in clients)))
-                   [nil join-chan] (finish-game! @game-env)
+                   [nil join-chan] (exit-game! @game-env)
 
                    ;; Player Join
                    [msg join-chan]
@@ -133,25 +143,26 @@
   [game-envs game-id]
   (let [game (new-game)
         join-chan (chan)
-        game-env (atom (map->GameEnv {:game-id game-id
+        game-env (atom (map->GameEnv {:id game-id
                                       :game game
                                       :clients []
                                       :join-chan join-chan}))
         game-chan (go-game game-env)]
     (swap! game-envs assoc game-id game-env)
     (go (<! game-chan) (swap! game-envs dissoc game-id))
-    @game-env))
+    game-env))
 
 (defn get-game-env!
   "Gets or inits new game"
   [game-envs game-id]
-  (dosync (or (@game-envs game-id)
-              (init-game-env! game-envs game-id))))
+  (let [env @(dosync (or (get @game-envs game-id)
+                        (init-game-env! game-envs game-id)))]
+    env))
 
 (defn join-game!
-  [game-envs game-id join-msg]
+  [game-envs game-id join-msg client]
   (let [game-env (get-game-env! game-envs game-id)]
-    (>!! (:join-chan game-env) join-msg)))
+    (>!! (:join-chan game-env) (assoc join-msg :client client))))
 
 (defn client-join
   [game-envs {:keys [uri in out] :as client}]
@@ -161,8 +172,9 @@
         (let [player-id (:player-id join-msg)
               assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
               player-in (map-source assoc-player-id in)
-              client {:in player-in :out out :player-id player-id}]
-          (join-game! game-envs uri (assoc join-msg :client client)))
+              client {:in player-in :out out :player-id player-id}
+              game-id (or (->> uri (re-find #"/game/(\d+)") second) "1")]
+          (join-game! game-envs game-id join-msg client))
         (do
           (>! out (msg/->ErrorMessage "You're strange"))
           (close! out))))))

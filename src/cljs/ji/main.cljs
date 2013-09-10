@@ -43,6 +43,12 @@
       [:div.small-2.columns
        [:input.button.postfix {:type "submit" :value "join"}]]]]]])
 
+(defn show-alert!
+  [msg]
+  (dom/append!
+    (sel1 :#messages)
+    (node [:div.alert-box {:data-alert true} msg])))
+
 (defn card-selector
   "todo: general partition/chunking buffer"
   ([card-chan] (card-selector (chan) card-chan))
@@ -63,7 +69,8 @@
           (when-let [cards (<! sels)]
             (println "Selected" cards)
             (>! out (msg/->PlayerSetMessage cards))
-            (doseq [el (sel :.card.selected)]
+            (doseq [el (sel [:.board :.selected])]
+              (println "selected" el)
               (dom/remove-class! el "selected"))
             (recur))))))
 
@@ -97,7 +104,7 @@
                 (>! -cards (s/difference board board*))
                 (>! +cards (s/difference board* board))
                 (>! *players players*)
-                ;(render-solutions! (solve-board board*)) ;; removeme cheater
+                (render-solutions! (solve-board board*)) ;; removeme cheater
                 (recur board*))
 
               :else
@@ -112,7 +119,7 @@
   [container game-id player-id]
   (println "Joining as" player-id)
   ;; todo: clear existing server, if any
-  (let [ws-uri (str "ws://" (aget js/window "location" "host") "/game/2")]
+  (let [ws-uri (str "ws://" (aget js/window "location" "host") "/games/" game-id)]
     (go
       (let [{:keys [in out] :as server} (<! (websocket/connect! ws-uri))
             msg (msg/join-game :player-id player-id)]
@@ -144,15 +151,13 @@
                                 (:message msg)]))
             (do (dom/remove! (sel1 :form.join-game))
                 (let [final (<! msg)]
-                  (dom/append! (sel1 :#messages)
-                               (node [:div.alert-box {:data-alert true}
-                                      "Disconnected from server"]))
+                  (show-alert! "Disconnected from server")
                   (init)))))))
 
-  ;(let [dict "abcdefghijklmnopqrstuvwxyz"
-  ;username (apply str (for [x (range 5)] (rand-nth dict)))]
-  ;(go (<! (timeout 50))
-  ;(dom/set-value! (sel1 "input[name='player-id']") username)
-  ;(<! (timeout 12))
-  ;(dom/fire! (sel1 "input[type=submit]") :click)))
+  (let [dict "abcdefghijklmnopqrstuvwxyz"
+        username (apply str (for [x (range 5)] (rand-nth dict)))]
+    (go (<! (timeout 50))
+        (dom/set-value! (sel1 "input[name='player-id']") username)
+        (<! (timeout 12))
+        (dom/fire! (sel1 "input[type=submit]") :click)))
   )
