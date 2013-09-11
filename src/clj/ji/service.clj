@@ -17,11 +17,6 @@
 
 (defrecord GameEnv [id game clients join-chan])
 
-(defn render-page [content]
-  (page/html5
-    (page/include-css "/stylesheets/app.css")
-    content))
-
 (def data-readers
   {'ji.domain.messages.ErrorMessage #'msg/map->ErrorMessage
    'ji.domain.messages.GameJoinMessage #'msg/map->GameJoinMessage
@@ -142,25 +137,36 @@
     (go (<! game-chan) (swap! game-envs dissoc game-id))
     game-env))
 
-(defn parse-game-id [uri]
-  (second (re-find #"(?:/game/)?(\d+)" uri)))
+(let [cs (vec "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")]
+  (defn rand-game-id [game-envs]
+    (let [s (apply str (for [i (range 5)] (rand-nth cs)))]
+      (if (contains? @game-envs s)
+        (recur game-envs)
+        s))))
+
+(defn valid-game-id? [game-id]
+  (boolean (re-find #"^[\w-]+$" game-id)))
 
 (defn create-app [game-envs]
   (-> (routes
         (POST "/games" {{game-id "game-id"} :params uri :uri}
-              (if-let [game-id (parse-game-id game-id)]
-                (let [game-env (init-game-env! game-envs game-id)]
-                  (resp/redirect-after-post (str "/games/" game-id)))
-                (-> (resp/response "Invalid game")
-                    (resp/status 400))))
+              (dosync
+                (cond
+                  (and game-id (not (valid-game-id? game-id)))
+                  (-> (resp/response "Invalid game") (resp/status 400))
+
+                  (and game-id (contains? @game-envs game-id))
+                  (-> (resp/response "Game already exists") (resp/status 409))
+
+                  :else
+                  (let [game-env (init-game-env! game-envs (or game-id (rand-game-id game-envs)))]
+                    (resp/redirect-after-post (str "/games/" (:id @game-env)))))))
         (GET "/games" []
-             (render-page (tmpl/render-lobby @game-envs)))
+             (tmpl/render-lobby @game-envs))
         (GET "/games/:game-id" [game-id]
              (if-let [game-env (get @game-envs game-id)]
-               (render-page
-                 (tmpl/render-game @game-env))
-               (route/not-found
-                 (render-page (tmpl/render-game-create game-id)))))
+               (tmpl/render-game @game-env)
+               (route/not-found (tmpl/render-game-create game-id))))
         (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
         (route/files "/" {:root "out/public"})
         (route/files "/" {:root "public"}))
@@ -177,7 +183,7 @@
 
 (defn client-join
   [game-envs {:keys [uri in out] :as client}]
-  (if-let [game-id (parse-game-id uri)]
+  (if-let [game-id (second (re-find #"^/games/([\w-]+)" uri))]
     (go
       (when-let [join-msg (<! in)]
         (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
