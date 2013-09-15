@@ -39,7 +39,7 @@
   until at least 1 set exists on board"
   [game]
   (loop [game game]
-    (if (and (not (empty? (:deck game)))
+    (if (and (seq (:deck game))
              (empty? (game/solve-board (:board game))))
       (recur (game/draw-cards 3 game))
       game)))
