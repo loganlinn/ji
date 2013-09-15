@@ -3,6 +3,7 @@
             [ji.domain.messages :as msg])
   (:import [ji.domain.messages PlayerSetMessage]))
 
+
 (defrecord GameEnv [id game clients join-chan])
 
 (defprotocol IGameMessage
@@ -26,11 +27,12 @@
 
 (defn fill-board
   "Returns game after filling board to 12 cards"
-  [{:keys [board deck] :as game}]
-  (let [num-add (- (min 12 (count deck)) (count board))]
-    (if (pos? num-add)
-      (game/draw-cards num-add game)
-      game)))
+  ([game] (fill-board game game/default-board-size))
+  ([{:keys [board deck] :as game} board-size]
+   (let [num-add (- (min board-size (count deck)) (count board))]
+     (if (pos? num-add)
+       (game/draw-cards num-add game)
+       game))))
 
 (defn fix-setless-board
   "If game's board contains sets, returns game as-is, otherwise, adds 3 cards

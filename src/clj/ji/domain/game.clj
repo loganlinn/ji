@@ -11,6 +11,7 @@
                :color colors
                :number numbers
                :fill fills})
+(def default-board-size 12)
 
 (defrecord Game [deck board players])
 
@@ -48,7 +49,7 @@
          (distinct))))
 
 (defn new-game []
-  (map->Game {:deck (-> (new-deck) (shuffle))
+  (map->Game {:deck (take 21 (-> (new-deck) (shuffle)))
               :board #{}
               :players {}}))
 
