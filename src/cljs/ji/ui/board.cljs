@@ -17,13 +17,17 @@
     [ji.util.macros :refer [go-loop]]))
 
 (deftemplate board-tmpl []
-  [:ul.board.small-block-grid-3])
+  [:div.board.row.collapse
+   [:div.large-12.columns
+    [:ul.small-block-grid-3]]
+   [:div.large-12.columns
+    [:span.cards-remaining]]])
 
 (defn add-card!
   [board-el card-sel card]
   (let [el (node [:li [:a {:href "#"} (card-tmpl card)]])
         eh #(do (.preventDefault %) (put! card-sel card))]
-    (dom/append! board-el el)
+    (dom/append! (sel1 board-el :ul) el)
     (dom/listen! el :click eh)
     (go (dom/add-class! el "new")
         (<! (timeout 2000))

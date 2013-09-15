@@ -104,6 +104,8 @@
                 (>! -cards (s/difference board board*))
                 (>! +cards (s/difference board* board))
                 (>! *players players*)
+                (dom/set-text! (sel1 [:.board :.cards-remaining])
+                               (str "Cards remaining: " (get-in msg [:game :cards-remaining] "?")))
                 (render-solutions! (solve-board board*)) ;; removeme cheater
                 (recur board*))
 
