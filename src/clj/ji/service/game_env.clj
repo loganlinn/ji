@@ -27,7 +27,7 @@
 (defn fill-board
   "Returns game after filling board to 12 cards"
   [{:keys [board deck] :as game}]
-  (let [num-add (- 12 (count board))]
+  (let [num-add (- (min 12 (count deck)) (count board))]
     (if (pos? num-add)
       (game/draw-cards num-add game)
       game)))
