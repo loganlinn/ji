@@ -83,7 +83,7 @@
         game-chan (go-game game-env)]
     (swap! game-envs assoc game-id game-env)
     (go (let [finshed-game (<! game-chan)]
-          (println ("GAME FINISH" finished-game))
+          (println ("GAME FINISH" finshed-game))
           (swap! game-envs dissoc (:id finshed-game))))
     game-env))
 
