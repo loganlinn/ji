@@ -41,6 +41,7 @@
 (defn- exit-game!
   [{:keys [game clients]}]
   (broadcast-msg! (msg/map->GameFinishMessage {:game game}) clients)
+  (doseq [client clients] (close! (:out client)))
   game)
 
 (defn go-game
