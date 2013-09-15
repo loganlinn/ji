@@ -12,10 +12,11 @@
 
 (extend-protocol IGameMessage
   PlayerSetMessage
-  (apply-message [{:keys [cards player-id]} {:keys [game clients]}]
-    (if (game/valid-set? game cards)
-      (game/take-set game player-id cards)
-      (game/revoke-set game player-id))))
+  (apply-message [{:keys [cards player-id]} {:keys [game clients] :as game-env}]
+    (assoc game-env
+           :game (if (game/valid-set? game cards)
+                   (game/take-set game player-id cards)
+                   (game/revoke-set game player-id)))))
 
 (defn- separate-client
   "Returns [client other-clients] by identifying client by input channel"
