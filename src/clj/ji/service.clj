@@ -1,11 +1,11 @@
 (ns ji.service
   (:require [ji.service.templates :as tmpl]
             [ji.service.game-env :as game-env]
+            [ji.service.client :as client]
             [ji.domain.game :as game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
-            [ji.util.async :refer [map-source map-sink]]
+            [ji.util.async :refer [map-source]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
-            [clojure.edn :as edn]
             [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
             [hiccup.core :refer [html]]
@@ -15,18 +15,6 @@
             [compojure.core :refer [routes GET POST]]
             [compojure.route :as route])
   (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
-
-(def data-readers
-  {'ji.domain.messages.ErrorMessage #'msg/map->ErrorMessage
-   'ji.domain.messages.GameJoinMessage #'msg/map->GameJoinMessage
-   'ji.domain.messages.GameLeaveMessage #'msg/map->GameLeaveMessage
-   'ji.domain.message.GameStateMessage #'msg/map->GameStateMessage
-   'ji.domain.messages.GameControlMessage #'msg/map->GameControlMessage
-   'ji.domain.messages.PlayerSetMessage #'msg/map->PlayerSetMessage})
-
-(defn client-read-string [data]
-  (edn/read-string {:readers data-readers} data))
-
 
 (defn broadcast-msg!
   [msg clients]
@@ -66,7 +54,7 @@
                          (swap! game-env game-env/disconnect-client sc))
                        (recur))
 
-                   ;; GameMessage
+                   ;; Game Message
                    [(msg :guard game-env/game-msg?) sc]
                    (do (broadcast-game-env!
                          (swap! game-env game-env/apply-game-message msg))
@@ -122,41 +110,30 @@
         (route/files "/" {:root "public"}))
       (wrap-params)))
 
-
-(defn join-game!
-  [game-envs game-id join-msg client]
-  (if-let [game-env (@game-envs game-id)]
-    (go (>! (:join-chan @game-env) (assoc join-msg :client client)))
-    (go (println "INVALID GAME!!" game-id)
-        (>! (:out client) (msg/error "Unknown game"))
-        (close! (:out client)))))
-
-(defn client-join
-  [game-envs {:keys [uri in out] :as client}]
-  (if-let [game-id (second (re-find #"^/games/([\w-]+)" uri))]
-    (go
-      (when-let [join-msg (<! in)]
-        (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
-          (let [player-id (:player-id join-msg)
-                assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
-                player-in (map-source assoc-player-id in)
-                client {:in player-in :out out :player-id player-id}]
-            (join-game! game-envs game-id join-msg client))
-          (do
-            (>! out (msg/->ErrorMessage "You're strange"))
-            (close! out)))))
-    (close! out)))
-
-(defn wrap-client-chan
-  "Reverse the in/out for our sanity, and communicate via edn"
-  [{:keys [in out] :as client}]
-  (assoc client
-         :in (map-source client-read-string out)
-         :out (map-sink pr-str in)))
+(defn client-join!
+  "Reads from new client channel, waits for JoinMessage and connects player to game.
+  Returns a channel that will pass valid client or close"
+  [game-env {:keys [uri in out] :as client}]
+  (go
+    (when-let [join-msg (<! in)]
+      (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
+        (let [player-id (:player-id join-msg)
+              assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
+              player-in (map-source assoc-player-id in)
+              client {:in player-in :out out :player-id player-id}
+              join-msg (assoc join-msg :client client)]
+          (>! (:join-chan @game-env) join-msg))
+        (do
+          (>! out (msg/->ErrorMessage "You're strange"))
+          (close! out))))))
 
 (defn register-ws-app!
   [game-envs client-chan]
-  (go (while true
-        (->> (<! client-chan)
-             (wrap-client-chan)
-             (client-join game-envs)))))
+  (go (loop []
+        (when-let [{:keys [uri] :as c} (<! client-chan)]
+          (if-let [game-id (second (re-find #"^/games/([\w-]+)" uri))]
+            (if-let [game-env (@game-envs game-id)]
+              (client-join! game-env (client/create-client c))
+              (close! (:out c)))
+            (close! (:out c)))
+          (recur)))))
