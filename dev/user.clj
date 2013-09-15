@@ -5,7 +5,8 @@
             [clojure.repl :refer :all]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
-            [ji.system :as system]))
+            [ji.system :as system]
+            [ji.domain.game :as game]))
 
 (def system nil)
 
