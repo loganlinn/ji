@@ -29,7 +29,7 @@
   "Returns game after filling board to 12 cards"
   ([game] (fill-board game game/default-board-size))
   ([{:keys [board deck] :as game} board-size]
-   (let [num-add (- (min board-size (count deck)) (count board))]
+   (let [num-add (min (- board-size (count board)) (count deck))]
      (if (pos? num-add)
        (game/draw-cards num-add game)
        game))))
