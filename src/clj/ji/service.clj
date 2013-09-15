@@ -81,7 +81,9 @@
         game-env (atom (game-env/create-game-env game-id game join-chan))
         game-chan (go-game game-env)]
     (swap! game-envs assoc game-id game-env)
-    (go (<! game-chan) (swap! game-envs dissoc game-id))
+    (go (let [finshed-game (<! game-chan)]
+          (println ("GAME FINISH" finished-game))
+          (swap! game-envs dissoc (:id finshed-game))))
     game-env))
 
 (let [cs (vec "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")]
