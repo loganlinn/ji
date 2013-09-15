@@ -19,12 +19,12 @@
 (defn render-game [game-env]
   (page/html5
     (page/include-css "/stylesheets/app.css")
-    (html [:body#game.row.collapsed
+    (html [:body#game.row.collapse
            {:onload "ji.main.init();"
             :data-game-id (:id game-env)}
            [:div#messages.small-12.columns]
            [:div.small-12.columns
-            [:div#content.row.collapsed]]
+            [:div#content.row.collapse]]
            (page/include-js "/js/main.js")])))
 
 (defn render-game-create [game-id]
@@ -49,7 +49,7 @@
 (defn render-lobby [game-envs]
   (render-page
     (html
-      [:div.row.collapsed
+      [:div.row.collapse
        [:h1 "Games"]
        [:div.large-12.columns
         [:form
