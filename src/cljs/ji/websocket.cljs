@@ -31,7 +31,8 @@
                                  (.close ws))))))))
            (aset "onmessage"
                  (fn [m]
-                   (put! out (read-string (.-data m)))))
+                   (when-let [data (read-string (.-data m))]
+                     (put! out data))))
            (aset "onclose"
                  (fn []
                    (close! in)
