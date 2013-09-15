@@ -85,31 +85,6 @@
 (defn valid-game-id? [game-id]
   (boolean (re-find #"^[\w-]+$" game-id)))
 
-(defn create-app [game-envs]
-  (-> (routes
-        (POST "/games" {{game-id "game-id"} :params uri :uri}
-              (dosync
-                (cond
-                  (and game-id (not (valid-game-id? game-id)))
-                  (-> (resp/response "Invalid game") (resp/status 400))
-
-                  (and game-id (contains? @game-envs game-id))
-                  (-> (resp/response "Game already exists") (resp/status 409))
-
-                  :else
-                  (let [game-env (init-game-env! game-envs (or game-id (rand-game-id game-envs)))]
-                    (resp/redirect-after-post (str "/games/" (:id @game-env)))))))
-        (GET "/games" []
-             (tmpl/render-lobby @game-envs))
-        (GET "/games/:game-id" [game-id]
-             (if-let [game-env (get @game-envs game-id)]
-               (tmpl/render-game @game-env)
-               (route/not-found (tmpl/render-game-create game-id))))
-        (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
-        (route/files "/" {:root "out/public"})
-        (route/files "/" {:root "public"}))
-      (wrap-params)))
-
 (defn client-join!
   "Reads from new client channel, waits for JoinMessage and connects player to game.
   Returns a channel that will pass valid client or close"
@@ -137,3 +112,28 @@
               (close! (:out c)))
             (close! (:out c)))
           (recur)))))
+
+(defn create-app [game-envs]
+  (-> (routes
+        (POST "/games" {{game-id "game-id"} :params uri :uri}
+              (dosync
+                (cond
+                  (and game-id (not (valid-game-id? game-id)))
+                  (-> (resp/response "Invalid game") (resp/status 400))
+
+                  (and game-id (contains? @game-envs game-id))
+                  (-> (resp/response "Game already exists") (resp/status 409))
+
+                  :else
+                  (let [game-env (init-game-env! game-envs (or game-id (rand-game-id game-envs)))]
+                    (resp/redirect-after-post (str "/games/" (:id @game-env)))))))
+        (GET "/games" []
+             (tmpl/render-lobby @game-envs))
+        (GET "/games/:game-id" [game-id]
+             (if-let [game-env (get @game-envs game-id)]
+               (tmpl/render-game @game-env)
+               (route/not-found (tmpl/render-game-create game-id))))
+        (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
+        (route/files "/" {:root "out/public"})
+        (route/files "/" {:root "public"}))
+      (wrap-params)))
