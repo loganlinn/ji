@@ -12,6 +12,8 @@
                :number numbers
                :fill fills})
 
+(defrecord Game [deck board players])
+
 (defn new-deck []
   (for [s shapes c colors n numbers f fills]
     {:shape s :color c :number n :fill f}))
@@ -44,8 +46,6 @@
          (map solve-pair)
          (keep identity)
          (distinct))))
-
-(defrecord Game [deck board players])
 
 (defn new-game []
   (map->Game {:deck (-> (new-deck) (shuffle))
