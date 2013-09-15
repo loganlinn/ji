@@ -32,9 +32,10 @@
     (html [:form
            {:method "POST"
             :action (game-url)}
-           (if game-id [:input {:type "hidden" :name "game-id" :value game-id}])
+           [:input {:type "hidden" :name "game-id" :value game-id}]
            [:div.row
-            [:div.large-6.small-12.columns
+            [:div.large-6.small-12.columns.large-centered
+             [:h2 "Game does not exist ..yet!"]
              [:input.button
               {:type "submit"
                :value "Create Game"}]]]])))
@@ -51,7 +52,14 @@
       [:div.row.collapsed
        [:h1 "Games"]
        [:div.large-12.columns
-        (render-game-create false)]
+        [:form
+         {:method "POST"
+          :action (game-url)}
+         [:div.row
+          [:div.large-6.small-12.columns
+           [:input.button
+            {:type "submit"
+             :value "Create Game"}]]]]]
        [:ul.large-12.columns
         [:table
          [:thead [:tr [:th "Name"] [:th "Players"] [:th ""]]]

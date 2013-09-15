@@ -17,6 +17,11 @@
       (game/take-set game player-id cards)
       (game/revoke-set game player-id))))
 
+(defn- separate-client
+  "Returns [client other-clients] by identifying client by input channel"
+  [clients client-in]
+  (let [m (group-by #(= (:in %) client-in) clients)]
+    [(first (m true)) (m false)]))
 
 (defn fill-board
   "Returns game after filling board to 12 cards"
@@ -39,8 +44,32 @@
   [game]
   (-> game (fill-board) (fix-setless-board)))
 
+(defn step-game-env
+  [game-env]
+  (update-in game-env [:game] step-game))
+
+(defn connect-client
+  [game-env client player-id]
+  (-> game-env
+      (update-in [:game] game/add-player player-id)
+      (update-in [:clients] conj client)
+      (step-game-env)))
+
+(defn disconnect-client
+  [{:keys [clients] :as game-env} client-in]
+  (let [[client other-clients] (separate-client clients client-in)]
+    (-> game-env
+        (update-in [:game] game/disconnect-player (:player-id client))
+        (assoc :clients other-clients)
+        (step-game-env))))
+
+(defn apply-game-message
+  [game-env game-msg]
+  (-> (apply-message game-msg game-env)
+      (step-game-env)))
+
 (defn create-game-env [game-id game join-chan]
-  (map->GameEnv {:game-id game-id
+  (map->GameEnv {:id game-id
                  :game game
                  :clients []
                  :join-chan join-chan}))

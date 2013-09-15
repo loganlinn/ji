@@ -33,16 +33,10 @@
   (doseq [{c :out} clients]
     (put! c msg)))
 
-(defn broadcast-game!
-  [game clients]
-  (broadcast-msg! (msg/game-state :game game) clients)
-  game)
-
-(defn- separate-client
-  "Returns [client other-clients] by identifying client by input channel"
-  [clients client-in]
-  (let [m (group-by #(= (:in %) client-in) clients)]
-    [(first (m true)) (m false)]))
+(defn broadcast-game-env!
+  [{:keys [game clients] :as game-env}]
+  (when (seq clients)
+    (broadcast-msg! (msg/game-state :game game) clients)))
 
 (defn- exit-game!
   [{:keys [game clients]}]
@@ -60,33 +54,21 @@
 
                    ;; Player Join
                    [msg join-chan]
-                   (let [{:keys [player-id client]} msg
-                         clients' (conj clients client)]
-                     (do (swap! game-env assoc
-                                :game (-> (game/add-player game player-id)
-                                          (game-env/step-game)
-                                          (broadcast-game! clients'))
-                                :clients clients')
+                   (let [{:keys [client player-id]} msg]
+                     (do (broadcast-game-env!
+                           (swap! game-env game-env/connect-client client player-id))
                          (recur)))
 
                    ;; Player Disconnect
                    [nil sc]
-                   (let [[client other-clients] (separate-client clients sc)]
-                     (do (swap! game-env
-                                assoc
-                                :game (-> game
-                                          (game/disconnect-player (:player-id client))
-                                          (game-env/step-game)
-                                          (broadcast-game! other-clients))
-                                :clients other-clients)
-                         (recur)))
+                   (do (broadcast-game-env!
+                         (swap! game-env game-env/disconnect-client sc))
+                       (recur))
 
                    ;; GameMessage
                    [(msg :guard game-env/game-msg?) sc]
-                   (do (swap! game-env assoc
-                              :game (-> (game-env/apply-message msg @game-env)
-                                        (game-env/step-game)
-                                        (broadcast-game! clients)))
+                   (do (broadcast-game-env!
+                         (swap! game-env game-env/apply-game-message msg))
                        (recur))
 
                    ;; Unknown Input
