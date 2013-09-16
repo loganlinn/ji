@@ -108,7 +108,10 @@
           (let [msg (<! in)]
             (cond
               (nil? msg)
-              (msg/error "Disconnected from server")
+              (do
+                (close! board-state)
+                (close! player-state)
+                (msg/error "Disconnected from server"))
 
               (instance? msg/GameStateMessage msg)
               (let [game* (:game msg)
