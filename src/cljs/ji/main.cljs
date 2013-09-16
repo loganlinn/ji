@@ -103,6 +103,14 @@
         (board-ui/destroy! container))
     (-> (players-ui/create! container player-id player-state)
         (players-ui/destroy! container))
+
+    (let [el (node [:button#disable-board.button "Disable Board"])]
+      (dom/append! (sel1 :body) el)
+      (dom/listen! el :click #(put! board-state :disable)))
+    (let [el (node [:button#enable-board.button "Enable Board"])]
+      (dom/append! (sel1 :body) el)
+      (dom/listen! el :click #(put! board-state :enable)))
+
     ;; driver loop
     (go (loop []
           (let [msg (<! in)]

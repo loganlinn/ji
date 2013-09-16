@@ -67,6 +67,7 @@
     board-data))
 
 (letfn [(on-card-click [e]
+          (.preventDefault e)
           (-> (.-target e)
               (dom/closest :a)
               (dom/toggle-class! "selected")))]
@@ -80,10 +81,18 @@
   (go
     (loop [board-data []]
       (if-let [board* (<! board-state)]
-        (if (= :disable board*)
+        (cond
+          (= :disable board*)
           (do
             (unlisten-cards! board-el)
             (recur (doall (map unbind-card! board-data))))
+
+          (= :enable board*)
+          (do
+            (listen-cards! board-el)
+            (recur (doall (map #(bind-card! card-sel %) board-data))))
+
+          (set? board*)
           (let [board (set (map :card board-data))
                 -cards (s/difference board board*)
                 +cards (s/difference board* board)]
