@@ -135,6 +135,7 @@
 
               (instance? msg/GameFinishMessage msg)
               (let [{:keys [game]} msg]
+                (>! board-state :disable)
                 (<! (go-game-summary container msg))
                 (close! board-state)
                 (close! player-state)
