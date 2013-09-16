@@ -1,6 +1,7 @@
 (ns ji.service.client
   (:require [ji.domain.messages :as msg]
             [clojure.edn :as edn]
+            [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close! timeout]]
             [ji.util.async :refer [map-source map-sink]]))
 
 (def data-readers

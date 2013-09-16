@@ -49,7 +49,7 @@
          (distinct))))
 
 (defn new-game []
-  (map->Game {:deck (take 21 (-> (new-deck) (shuffle)))
+  (map->Game {:deck (take 12 (-> (new-deck) (shuffle)))
               :board #{}
               :players {}}))
 

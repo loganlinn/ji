@@ -14,7 +14,8 @@
              :refer [<! >! chan close! put! timeout]]
             [cljs.core.match]
             [cljs.reader :refer [register-tag-parser!]]
-            [dommy.core :as dom])
+            [dommy.core :as dom]
+            [dommy.template :refer [html->nodes]])
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :refer [go alt!]]
@@ -26,11 +27,10 @@
 (register-tag-parser! 'ji.domain.messages.ErrorMessage msg/map->ErrorMessage)
 (register-tag-parser! 'ji.domain.messages.GameLeaveMessage msg/map->GameLeaveMessage)
 (register-tag-parser! 'ji.domain.messages.GameStateMessage msg/map->GameStateMessage)
-(register-tag-parser! 'ji.domain.messages.GameControlMessage msg/map->GameControlMessage)
+(register-tag-parser! 'ji.domain.messages.GameFinishMessage msg/map->GameFinishMessage)
+;(register-tag-parser! 'ji.domain.messages.GameControlMessage msg/map->GameControlMessage)
 
 (defn separate [n coll] [(take n coll) (drop n coll)])
-
-(def current-server (atom nil))
 
 (deftemplate join-tmpl [game-id]
   [:form.join-game
@@ -67,10 +67,8 @@
   (let [sels (card-selector card-sel)]
     (go (loop []
           (when-let [cards (<! sels)]
-            (println "Selected" cards)
             (>! out (msg/->PlayerSetMessage cards))
             (doseq [el (sel [:.board :.selected])]
-              (println "selected" el)
               (dom/remove-class! el "selected"))
             (recur))))))
 
@@ -82,54 +80,71 @@
     (doseq [s sets]
       (dom/append! el (node [:div.set (map card-tmpl s)])))))
 
+(defn go-game-summary [container {:keys [game] :as finish-msg}]
+  (println finish-msg)
+  (go (let [modal (node [:div.reveal-modal.open
+                         {:style "display:block; visibility:visible;"}
+                         [:h2 "Game Complete"]
+                         [:div "game stats..."]
+                         [:a.close-reveal-modal (html->nodes "&#215;")]])
+            close-chan (chan)]
+        (dom/append! container modal)
+        (dom/listen! (sel1 modal :a.close-reveal-modal) :click
+                     (fn [e] (.preventDefault e) (close! close-chan)))
+        (<! close-chan)
+        (dom/remove! modal))))
+
 (defn go-game [container in out player-id]
-  (let [control (chan)
-        card-sel (chan)
-        +cards (chan)
-        -cards (chan)
-        *players (chan)]
+  (let [card-sel (chan)
+        board-state (chan)
+        player-state (chan)]
     (go-emit-selections out card-sel)
-    (-> (board-ui/create! container +cards -cards card-sel)
+    (-> (board-ui/create! container board-state card-sel)
         (board-ui/destroy! container))
-    (-> (players-ui/create! container player-id *players)
+    (-> (players-ui/create! container player-id player-state)
         (players-ui/destroy! container))
     ;; driver loop
-    (go (loop [board #{}]
-          (when-let [msg (<! in)]
-            (println "INPUT" msg)
+    (go (loop []
+          (let [msg (<! in)]
             (cond
+              (nil? msg)
+              (msg/error "Disconnected from server")
+
               (instance? msg/GameStateMessage msg)
-              (let [board* (set (get-in msg [:game :board]))
-                    players* (get-in msg [:game :players])]
-                (>! -cards (s/difference board board*))
-                (>! +cards (s/difference board* board))
-                (>! *players players*)
+              (let [game* (:game msg)
+                    board* (set (:board game*))
+                    players* (:players game*)]
+
+                (>! board-state board*)
+                (>! player-state players*)
                 (dom/set-text! (sel1 [:.board :.cards-remaining])
                                (str "Cards remaining: " (get-in msg [:game :cards-remaining] "?")))
                 (render-solutions! (solve-board board*)) ;; removeme cheater
-                (recur board*))
+                (recur))
+
+              (instance? msg/GameFinishMessage msg)
+              (let [{:keys [game]} msg]
+                (<! (go-game-summary container msg))
+                (close! board-state)
+                (close! player-state)
+                msg)
 
               :else
               (do (println "UNHANDLED MSG" msg)
-                  (recur board)))
+                  (recur)))
             )))))
 
-(defn start-game [container server player-id]
-  (go-game container (:in server) (:out server) player-id))
-
-(defn join-game
+(defn run-game!
   [container game-id player-id]
-  (println "Joining as" player-id)
-  ;; todo: clear existing server, if any
   (let [ws-uri (str "ws://" (aget js/window "location" "host") "/games/" game-id)]
     (go
       (let [{:keys [in out] :as server} (<! (websocket/connect! ws-uri))
             msg (msg/join-game :player-id player-id)]
         (if (msg/valid? msg)
-          (do (reset! current-server server)
-              (>! out msg)
-              ;; TODO get join confirmation
-              (start-game container server player-id))
+          (do
+            (>! out msg)
+            ;; TODO get join confirmation
+            (<! (go-game container (:in server) (:out server) player-id)))
           (msg/error "Unable to join"))))))
 
 
@@ -146,21 +161,17 @@
               t (.-target e)
               game-id (dom/value (sel1 t "input[name='game-id']"))
               player-id (dom/value (sel1 t "input[name='player-id']"))
-              msg (<! (join-game container game-id player-id))]
+              result-chan (run-game! container game-id player-id)]
           (clear! (sel1 :#messages))
-          (if (msg/error? msg)
-            (dom/append! (sel1 :#messages)
-                         (node [:div.alert-box {:data-alert true}
-                                (:message msg)]))
-            (do (dom/remove! (sel1 :form.join-game))
-                (let [final (<! msg)]
-                  (show-alert! "Disconnected from server")
-                  (init)))))))
+          (dom/remove! (sel1 :form.join-game))
+          (let [result (<! result-chan)]
+            (if (msg/error? result)
+              (show-alert! (:message result)))))))
 
   ;(let [dict "abcdefghijklmnopqrstuvwxyz"
-        ;username (apply str (for [x (range 5)] (rand-nth dict)))]
-    ;(go (<! (timeout 50))
-        ;(dom/set-value! (sel1 "input[name='player-id']") username)
-        ;(<! (timeout 12))
-        ;(dom/fire! (sel1 "input[type=submit]") :click)))
+  ;username (apply str (for [x (range 5)] (rand-nth dict)))]
+  ;(go (<! (timeout 50))
+  ;(dom/set-value! (sel1 "input[name='player-id']") username)
+  ;(<! (timeout 12))
+  ;(dom/fire! (sel1 "input[type=submit]") :click)))
   )

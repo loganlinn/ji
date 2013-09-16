@@ -27,10 +27,10 @@
     (broadcast-msg! (msg/game-state :game game) clients)))
 
 (defn- exit-game!
-  [{:keys [game clients]}]
+  [{:keys [game clients] :as game-env}]
   (broadcast-msg! (msg/map->GameFinishMessage {:game game}) clients)
-  (doseq [client clients] (close! (:out client)))
-  game)
+  ;(doseq [client clients] (close! (:out client)))
+  game-env)
 
 (defn go-game
   [game-env]

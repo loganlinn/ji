@@ -37,19 +37,22 @@
      :unsubscribe #(dom/unlisten! el :click eh)}))
 
 (defn add-cards!
-  [board parent-el card-sel cards]
-  ;(println "Adding cards:" cards)
-  (doall (concat board (for [card cards]
-                         (add-card! parent-el card-sel card)))))
+  [board-data parent-el card-sel cards]
+  (if (seq cards)
+    (doall (concat board-data
+                   (for [card cards]
+                     (add-card! parent-el card-sel card))))
+    board-data))
 
 (defn remove-cards!
-  [board cards]
-  ;(println "Removing cards" cards)
-  (let [{others false cs true} (group-by #(contains? cards (:card %)) board)]
-    (doseq [{:keys [unsubscribe el]} cs]
-      (unsubscribe)
-      (dom/remove! el))
-    others))
+  [board-data cards]
+  (if (seq cards)
+    (let [{others false cs true} (group-by #(contains? cards (:card %)) board-data)]
+      (doseq [{:keys [unsubscribe el]} cs]
+        (unsubscribe)
+        (dom/remove! el))
+      others)
+    board-data))
 
 (letfn [(on-card-click [e]
           (-> (.-target e)
@@ -61,26 +64,30 @@
     (dom/unlisten! [board-el :a] :click on-card-click)))
 
 (defn go-board-ui
-  [container +cards -cards card-sel]
+  [container board-state card-sel]
   (go
-    (loop [board []]
-      (match (alts! [-cards +cards] :priority true)
-             [nil _] board
-             [v +cards] (recur (add-cards! board container card-sel v))
-             [v -cards] (recur (remove-cards! board v))))))
+    (loop [board-data []]
+      (if-let [board* (<! board-state)]
+        (let [board (set (map :card board-data))
+              -cards (s/difference board board*)
+              +cards (s/difference board* board)]
+          (recur (-> board-data
+                     (remove-cards! -cards)
+                     (add-cards! container card-sel +cards))))
+        board-data))))
 
-(defn create! [container +cards -cards card-sel]
+(defn create! [container board-state card-sel]
   (let [board-el (board-tmpl)]
     (dom/append! container board-el)
     (listen-cards! board-el)
-    (go-board-ui board-el +cards -cards card-sel)))
+    (go-board-ui board-el board-state card-sel)))
 
 (defn destroy!
   [c container]
   (go
-    (let [board-el (sel1 container :.board)]
+    (when-let [board-el (sel1 container :.board)]
       (doseq [{:keys [unsubscribe el]} (<! c)]
         (unsubscribe)
         (dom/remove! el))
       (unlisten-cards! board-el)
-      (dom/remove board-el))))
+      (dom/remove! board-el))))

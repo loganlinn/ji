@@ -1,6 +1,7 @@
 (ns ji.service.game-env
   (:require [ji.domain.game :as game]
-            [ji.domain.messages :as msg])
+            [ji.domain.messages :as msg]
+            [ji.util :as util :refer [now]])
   (:import [ji.domain.messages PlayerSetMessage]))
 
 
@@ -76,4 +77,6 @@
   (map->GameEnv {:id game-id
                  :game game
                  :clients []
-                 :join-chan join-chan}))
+                 :join-chan join-chan
+                 :created-at (now)
+                 :updated-at (now)}))
