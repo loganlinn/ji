@@ -25,7 +25,7 @@
                             (if (= self-id player-id) "self")])}
      [:h4 player-id]
      [:span.online-ind]
-     [:span.subheader (format "%d sets" (count sets))]
+     [:span.subheader (str (count sets) " sets")]
      [:ul.sets
       (for [ji (take 9 sets)]
         [:li (map card-tmpl ji)])]]))
