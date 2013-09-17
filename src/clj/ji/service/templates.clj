@@ -16,6 +16,9 @@
      [:div.large-12.columns
       content]]))
 
+(defn render-error [message]
+  (render-page [:div.alert-box.alert message]))
+
 (defn render-game [game-env]
   (page/html5
     (page/include-css "/stylesheets/app.css")
@@ -26,6 +29,7 @@
            [:div.small-12.columns
             [:div#content.row.collapse]]
            (page/include-js "/js/main.js")])))
+
 
 (defn render-game-create [game-id]
   (render-page
@@ -40,11 +44,13 @@
               {:type "submit"
                :value "Create Game"}]]]])))
 
-(defn lobby-row [{:keys [id game clients] :as game-env}]
-  (html [:tr
+(defn lobby-row [{:keys [id game clients max-clients] :as game-env}]
+  (let [num-clients (count clients)]
+   (html [:tr
          [:td id]
-         [:td.players (count clients)]
-         [:td [:a.button {:href (game-url id)} "Join"]]]))
+         [:td.players (format "%d/%d" num-clients max-clients)]
+         [:td (when (< num-clients max-clients) [:a.button {:href (game-url id)} "Join"])]])))
+
 
 (defn render-lobby [game-envs]
   (render-page

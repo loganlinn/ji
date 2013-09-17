@@ -4,8 +4,9 @@
             [ji.util :as util :refer [now]])
   (:import [ji.domain.messages PlayerSetMessage]))
 
+(def default-max-clients 9)
 
-(defrecord GameEnv [id game clients join-chan])
+(defrecord GameEnv [id game clients join-chan max-clients])
 
 (defprotocol IGameMessage
   (apply-message [_ game-env]))
@@ -73,10 +74,15 @@
   (-> (apply-message game-msg game-env)
       (step-game-env)))
 
+(defn max-clients? [game-env]
+  (>= (count (:clients game-env))
+      (:max-clients game-env)))
+
 (defn create-game-env [game-id game join-chan]
   (map->GameEnv {:id game-id
                  :game game
                  :clients []
+                 :max-clients default-max-clients
                  :join-chan join-chan
                  :created-at (now)
                  :updated-at (now)}))

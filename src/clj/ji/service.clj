@@ -92,12 +92,16 @@
   (go
     (when-let [join-msg (<! in)]
       (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
-        (let [player-id (:player-id join-msg)
-              assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
-              player-in (map-source assoc-player-id in)
-              client {:in player-in :out out :player-id player-id}
-              join-msg (assoc join-msg :client client)]
-          (>! (:join-chan @game-env) join-msg))
+        (if-not (game-env/max-clients? @game-env)
+          (let [player-id (:player-id join-msg)
+                assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
+                player-in (map-source assoc-player-id in)
+                client {:in player-in :out out :player-id player-id}
+                join-msg (assoc join-msg :client client)]
+            (>! (:join-chan @game-env) join-msg))
+          (do
+            (>! out (msg/->ErrorMessage "Game full"))
+            (close! out)))
         (do
           (>! out (msg/->ErrorMessage "You're strange"))
           (close! out))))))
@@ -130,8 +134,10 @@
         (GET "/games" []
              (tmpl/render-lobby @game-envs))
         (GET "/games/:game-id" [game-id]
-             (if-let [game-env (get @game-envs game-id)]
-               (tmpl/render-game @game-env)
+             (if-let [game-env (some-> (get @game-envs game-id) deref)]
+               (if-not (game-env/max-clients? game-env)
+                 (tmpl/render-game game-env)
+                 (tmpl/render-error "Game full"))
                (route/not-found (tmpl/render-game-create game-id))))
         (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
         (route/files "/" {:root "out/public"})
