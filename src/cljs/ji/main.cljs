@@ -74,9 +74,10 @@
 
 (defn render-solutions!
   [sets]
-  (let [el (node [:div#solution [:h2 "psst"]])]
+  (let [el (node [:div.panel.large-4.large-centered.small-12.columns [:h2 "psst"]])]
     (if-let [x (sel1 :#solution)] (dom/remove! x))
-    (dom/append! (sel1 :#content) el)
+    (dom/append! (sel1 :#content)
+                 (node [:div#solution.row el]))
     (doseq [s sets]
       (dom/append! el (node [:div.set (map card-tmpl s)])))))
 
