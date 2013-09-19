@@ -11,7 +11,7 @@
                  [hiccup "1.0.4"]
                  [ring/ring-jetty-adapter "1.2.0"]
                  [compojure "1.1.5" :exclusions [ring/ring-core]]
-                 [com.keminglabs/jetty7-websockets-async "0.1.0-SNAPSHOT"]
+                 [com.keminglabs/jetty7-websockets-async "0.1.0"]
                  [prismatic/dommy "0.1.1"]]
   :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}
   :min-lein-version "2.0.0"

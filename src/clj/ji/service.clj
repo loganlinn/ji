@@ -88,7 +88,7 @@
 (defn client-join!
   "Reads from new client channel, waits for JoinMessage and connects player to game.
   Returns a channel that will pass valid client or close"
-  [game-env {:keys [uri in out] :as client}]
+  [game-env {:keys [in out] :as client}]
   (go
     (when-let [join-msg (<! in)]
       (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
@@ -96,7 +96,7 @@
           (let [player-id (:player-id join-msg)
                 assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
                 player-in (map-source assoc-player-id in)
-                client {:in player-in :out out :player-id player-id}
+                client (assoc client :in player-in :player-id player-id)
                 join-msg (assoc join-msg :client client)]
             (>! (:join-chan @game-env) join-msg))
           (do
@@ -109,8 +109,8 @@
 (defn register-ws-app!
   [game-envs client-chan]
   (go (loop []
-        (when-let [{:keys [uri] :as c} (<! client-chan)]
-          (if-let [game-id (second (re-find #"^/games/([\w-]+)" uri))]
+        (when-let [{:keys [request] :as c} (<! client-chan)]
+          (if-let [game-id (second (re-find #"^/games/([\w-]+)" (:uri request)))]
             (if-let [game-env (@game-envs game-id)]
               (client-join! game-env (client/create-client c))
               (close! (:out c)))
