@@ -15,6 +15,7 @@
                  [prismatic/dommy "0.1.1"]]
   :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}
   :min-lein-version "2.0.0"
+  :uberjar-name "ji-standalone.jar"
 
   :profiles {:dev {:source-paths ["dev"]
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]
