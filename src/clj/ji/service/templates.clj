@@ -31,7 +31,7 @@
 (defmacro defpage
   [title bindings & body]
   (let [blocks (build-blocks body)
-        page-title (:title blocks "jí")]
+        page-title (:title blocks "Set!")]
     `(defn ~title ~bindings
        (page/html5
          [:head
@@ -41,7 +41,7 @@
          [:body.row
           [:nav.top-bar
            [:ul.title-area
-            [:li.name [:h1 [:a {:href "/"} "jí"]]]
+            [:li.name [:h1 [:a {:href "/"} "Set!"]]]
             [:li.toggle-topbar.menu-icon [:a {:href "#"} [:span]]]]
            [:section.top-bar-section
             [:ul.left
