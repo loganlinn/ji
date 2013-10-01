@@ -91,9 +91,12 @@
 .player {
   & {
     @include panel;
+    display: block;
+    width: 100%;
     padding: 1em;
     float:left;
     position: relative;
+    margin-bottom:-1px;
   }
 
   &.self {

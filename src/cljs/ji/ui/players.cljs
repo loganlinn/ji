@@ -23,7 +23,7 @@
      {:data-player-id player-id
       :class (str/join " " [(if online? "online" "offline")
                             (if (= self-id player-id) "self")])}
-     [:h4 player-id]
+     [:h5 player-id]
      [:span.online-ind]
      [:span.subheader (str (count sets) " sets")]
      [:ul.sets
@@ -33,15 +33,16 @@
 (deftemplate players-tmpl [player-id players]
   ;(println (pr-str (players player-id)))
   ;(println (pr-str (dissoc players player-id)))
-  [:div.players.row.collapse
-   [:ul.small-12
-    (map (partial player-tmpl player-id)
-         (cons
-           [player-id (players player-id)]
-           (sort-by (fn [[pid plr]]
-                      [(p/online? plr) (count (:sets plr)) pid])
-                    >
-                    (dissoc players player-id))))]])
+  [:div.players.large-3.small-2.columns
+   [:div.row.collapse
+    [:ul.large-block-grid-1
+     (map (partial player-tmpl player-id)
+          (cons
+            [player-id (players player-id)]
+            (sort-by (fn [[pid plr]]
+                       [(p/online? plr) (count (:sets plr)) pid])
+                     >
+                     (dissoc players player-id))))]]])
 
 (defn go-players-ui [container player-id players-chan]
   (go (loop [players {}]
@@ -50,12 +51,12 @@
             (recur players)
             (let [node (players-tmpl player-id players')]
               (dom/remove! (sel1 container :.players))
-              (dom/append! (sel1 :#content) node)
+              (dom/prepend! (sel1 :#content) node)
               (recur players')))
           players))))
 
 (defn create! [container player-id players-chan]
-  (dom/append! container (players-tmpl player-id {}))
+  (dom/prepend! container (players-tmpl player-id {}))
   (go-players-ui container player-id players-chan))
 
 (defn destroy!

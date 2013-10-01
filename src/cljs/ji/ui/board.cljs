@@ -17,11 +17,12 @@
     [ji.util.macros :refer [go-loop]]))
 
 (deftemplate board-tmpl []
-  [:div.board.row.collapse
-   [:div.large-12.columns
-    [:ul.small-block-grid-3]]
-   [:div.large-12.columns
-    [:span.cards-remaining]]])
+  [:div.board.large-9.small-10.columns
+   [:div.row.collapse
+    [:div.large-12.columns
+     [:ul.cards.small-block-grid-3]]
+    [:div.large-12.columns
+     [:span.cards-remaining]]]])
 
 (defn bind-card!
   [card-sel {:keys [el card] :as data}]
@@ -44,7 +45,7 @@
 (defn add-card!
   [board-el card-sel card]
   (let [el (node [:li [:a {:href "#"} (card-tmpl card)]])]
-    (dom/append! (sel1 board-el :ul) el)
+    (dom/append! (sel1 board-el :.cards) el)
     (go (dom/add-class! el "new")
         (<! (timeout 2000))
         (dom/remove-class! el "new"))

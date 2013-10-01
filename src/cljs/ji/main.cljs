@@ -80,8 +80,8 @@
   [sets]
   (let [el (node [:div.panel.large-4.large-centered.small-12.columns [:h2 "psst"]])]
     (if-let [x (sel1 :#solution)] (dom/remove! x))
-    (dom/append! (sel1 :#content)
-                 (node [:div#solution.row el]))
+    (dom/append! (sel1 :.board)
+                 (node [:div#solution.row.collapse el]))
     (doseq [s sets]
       (dom/append! el (node [:div.set (map card-tmpl s)])))))
 
@@ -180,8 +180,7 @@
     (clear! container)
     (dom/append! container (join-tmpl game-id))
     (dom/listen-once! (sel1 :form.join-game) :submit
-                      (fn [e] (.preventDefault e)
-                        (put! join-submit e)))
+                      (fn [e] (.preventDefault e) (put! join-submit e)))
     (go (let [e (<! join-submit)
               t (.-target e)
               game-id (dom/value (sel1 t "input[name='game-id']"))

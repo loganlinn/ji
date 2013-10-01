@@ -22,7 +22,7 @@
 (defn render-game [game-env]
   (page/html5
     (page/include-css "/stylesheets/app.css")
-    (html [:body#game.row.collapse
+    (html [:body#game.row
            {:onload "ji.main.init();"
             :data-game-id (:id game-env)}
            [:div#messages.small-12.columns]
