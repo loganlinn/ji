@@ -47,9 +47,9 @@
                      ;; Player Join
                      [msg join-chan]
                      (let [{:keys [client player-id]} msg]
-                       (do (broadcast-game-env!
-                             (swap! game-env game-env/connect-client client player-id))
-                           (recur)))
+                       (broadcast-game-env!
+                         (swap! game-env game-env/connect-client client player-id))
+                       (recur))
 
                      ;; Player Disconnect
                      [nil sc]
@@ -141,13 +141,13 @@
                   (let [game-env (init-game-env! game-envs (or game-id (rand-game-id game-envs)))]
                     (resp/redirect-after-post (str "/games/" (:id @game-env)))))))
         (GET "/games" []
-             (tmpl/render-lobby @game-envs))
+             (tmpl/lobby @game-envs))
         (GET "/games/:game-id" [game-id]
              (if-let [game-env (some-> (get @game-envs game-id) deref)]
                (if-not (game-env/max-clients? game-env)
-                 (tmpl/render-game game-env)
-                 (tmpl/render-error "Game full"))
-               (route/not-found (tmpl/render-game-create game-id))))
+                 (tmpl/game game-env)
+                 (tmpl/error "Game full"))
+               (route/not-found (tmpl/game-create game-id))))
         (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
         (route/resources "/"))
       (wrap-params)))

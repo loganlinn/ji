@@ -23,12 +23,15 @@
   :profiles {:dev {:source-paths ["dev"]
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.classpath "0.2.0"]
-                                  [midje "1.5.1"]]}}
+                                  [midje "1.5.1"]]
+                   :env {:prod false}}
+             :prod {:env {:prod true}}}
 
   :source-paths ["src/clj" "src/cljs"]
   :test-paths ["test/clj"]
 
-  :plugins [[lein-cljsbuild "0.3.2"]]
+  :plugins [[lein-cljsbuild "0.3.2"]
+            [lein-environ "0.4.0"]]
   :cljsbuild {:builds {:dev
                        {:source-paths ["src/cljs"]
                         :compiler {:optimizations :whitespace

@@ -176,7 +176,7 @@
 (defn ^:export init []
   (let [container (sel1 :#content)
         join-submit (chan)
-        game-id (dom/attr (sel1 :body) "data-game-id")]
+        game-id (dom/attr (sel1 :#game) "data-game-id")]
     (clear! container)
     (dom/append! container (join-tmpl game-id))
     (dom/listen-once! (sel1 :form.join-game) :submit
