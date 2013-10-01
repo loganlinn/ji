@@ -30,6 +30,10 @@
 (register-tag-parser! 'ji.domain.messages.GameFinishMessage msg/map->GameFinishMessage)
 ;(register-tag-parser! 'ji.domain.messages.GameControlMessage msg/map->GameControlMessage)
 
+(def heartbeat-interval 5000)
+(def heartbeat-req :ping)
+(def heartbeat-resp :pong)
+
 (defn separate [n coll] [(take n coll) (drop n coll)])
 
 (deftemplate join-tmpl [game-id]
@@ -112,6 +116,11 @@
       (dom/append! (sel1 :body) el)
       (dom/listen! el :click #(put! board-state :enable)))
 
+    ;; Heartbeat
+    (go-loop
+      (<! (timeout heartbeat-interval))
+      (>! out heartbeat-req))
+
     ;; driver loop
     (go (loop []
           (let [msg (<! in)]
@@ -121,6 +130,9 @@
                 (close! board-state)
                 (close! player-state)
                 (msg/error "Disconnected from server"))
+
+              (= msg heartbeat-resp)
+              (do (recur))
 
               (instance? msg/GameStateMessage msg)
               (let [game* (:game msg)
