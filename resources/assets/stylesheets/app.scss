@@ -56,6 +56,9 @@
 
 @import "compass/reset/utilities";
 
+$card-height: 123px;
+$card-width: 73px;
+
 .card {
   display: inline-block;
 }
@@ -65,10 +68,6 @@
   $bg: #d9d9d9;
   @include panel($bg);
 
-  li {
-    text-align: center;
-    padding: 0;
-  }
   a {
     display: inline-block;
     padding: 1em 1.75em;
@@ -80,6 +79,50 @@
     background-color: lighten($bg, 10%);
   }
 }
+
+.cards {
+  $each-height: ($card-height + 15px);
+  $cols: 3;
+  $rows: 4;
+  $animate-duration: 0.7s;
+
+  position: relative;
+  list-style: none;
+  height: $rows * $each-height;
+
+  li {
+    position: absolute;
+    top: 0;
+    height: $each-height;
+    transition: all $animate-duration linear;
+    text-align: center;
+    padding: 0;
+    width: 100% / $cols;
+  }
+
+  @for $i from 1 through $cols {
+    li:nth-child(#{$cols}n+#{$i}) {
+      left: (($i - 1) * 100%) / $cols;
+    }
+  }
+
+  @for $i from 1 through ($rows - 1) {
+    li:nth-child(n+#{$i * $cols + 1}) {
+      top: ($i * 100%) / $rows;
+    }
+  }
+
+  &.rows-5 {
+    $rows: 5;
+    height: $rows * $each-height;
+    @for $i from 1 through ($rows - 1) {
+      li:nth-child(n+#{$i * $cols + 1}) {
+        top: ($i * 100%) / $rows;
+      }
+    }
+  }
+}
+
 .players {
   ul {
     margin: 0;
@@ -89,15 +132,13 @@
   }
 }
 .player {
-  & {
-    @include panel;
-    display: block;
-    width: 100%;
-    padding: 1em;
-    float:left;
-    position: relative;
-    margin-bottom:-1px;
-  }
+  @include panel;
+  display: block;
+  width: 100%;
+  padding: 1em;
+  float:left;
+  position: relative;
+  margin-bottom:-1px;
 
   &.self {
     margin-right: 3px;

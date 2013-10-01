@@ -20,7 +20,7 @@
   [:div.board.large-9.small-10.columns
    [:div.row.collapse
     [:div.large-12.columns
-     [:ul.cards.small-block-grid-3]]
+     [:ul.cards]]
     [:div.large-12.columns
      [:span.cards-remaining]]]])
 
