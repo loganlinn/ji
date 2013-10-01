@@ -82,27 +82,30 @@
   (go
     (loop [board-data []
            last-set nil]
-      (if-let [[board* sets] (<! board-state)]
-        (cond
-          (= :disable board*)
-          (do (unlisten-cards! board-el)
-              (recur (doall (map unbind-card! board-data))
-                     (last sets)))
+      (match (<! board-state)
+        nil
+        board-data
 
-          (= :enable board*)
-          (do (listen-cards! board-el)
-              (recur (doall (map #(bind-card! card-sel %) board-data))
-                     (last sets)))
+        :disable
+        (do (unlisten-cards! board-el)
+            (recur (doall (map unbind-card! board-data))
+                   last-set))
 
-          (set? board*)
-          (let [board (set (map :card board-data))
-                -cards (s/difference board board*)
-                +cards (s/difference board* board)]
-            (recur (-> board-data
-                       (remove-cards! -cards)
-                       (add-cards! board-el card-sel +cards))
-                   (last sets))))
-        board-data))))
+        :enable
+        (do (listen-cards! board-el)
+            (recur (doall (map #(bind-card! card-sel %) board-data))
+                   last-set))
+
+        [board sets]
+        (let [old-board (set (map :card board-data))
+              -cards (s/difference old-board board)
+              +cards (s/difference board old-board)]
+          (recur (-> board-data
+                     (remove-cards! -cards)
+                     (add-cards! board-el card-sel +cards))
+                 (last sets)))
+        :else
+        (recur board-data last-set)))))
 
 (defn create! [container board-state card-sel]
   (let [board-el (board-tmpl)]
