@@ -1,1 +1,1 @@
-web: java $JVM_OPTS -cp target/ji-standalone.jar ji.system
+web: java $JVM_OPTS -cp target/ji-standalone.jar ji.main
