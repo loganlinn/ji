@@ -150,4 +150,5 @@
                (route/not-found (tmpl/game-create game-id))))
         (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
         (route/resources "/"))
+      (tmpl/wrap-with-request)
       (wrap-params)))
