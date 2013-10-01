@@ -68,7 +68,7 @@
     [:div#game.row.collapse {:data-game-id (:id game-env)}])
   (defblock body-end
     (page/include-js "/js/main.js")
-    [:script "$(document).ready(ji.main.init);"]))
+    [:script "$(ji.main.init);"]))
 
 
 (defpage game-create [game-id]
