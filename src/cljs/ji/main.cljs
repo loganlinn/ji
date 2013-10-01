@@ -174,7 +174,7 @@
 
 
 (defn ^:export init []
-  (let [container (sel1 :#content)
+  (let [container (sel1 :#game)
         join-submit (chan)
         game-id (dom/attr (sel1 :#game) "data-game-id")]
     (clear! container)

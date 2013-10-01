@@ -50,14 +50,16 @@
           (if (= players players')
             (recur players)
             (let [node (players-tmpl player-id players')]
-              (dom/remove! (sel1 container :.players))
-              (dom/prepend! (sel1 :#content) node)
+              (dom/set-html! container "")
+              (dom/append! container node)
               (recur players')))
           players))))
 
 (defn create! [container player-id players-chan]
-  (dom/prepend! container (players-tmpl player-id {}))
-  (go-players-ui container player-id players-chan))
+  (let [players-container (node [:div#players
+                                 (players-tmpl player-id {})])]
+    (dom/prepend! container players-container)
+    (go-players-ui players-container player-id players-chan)))
 
 (defn destroy!
   [c container]
