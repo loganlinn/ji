@@ -17,7 +17,7 @@
   :min-lein-version "2.0.0"
 
   :uberjar-name "ji-standalone.jar"
-  :aot [ji.system]
+  :aot [ji.main]
 
   :profiles {:dev {:source-paths ["dev"]
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]

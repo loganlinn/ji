@@ -23,6 +23,3 @@
   (when-let [server (:server system)]
     (.stop server))
   (dissoc system :server))
-
-(defn -main [& args]
-  (start (system)))
