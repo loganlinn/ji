@@ -80,18 +80,19 @@
 (defn go-board-ui
   [board-el board-state card-sel]
   (go
-    (loop [board-data []]
-      (if-let [board* (<! board-state)]
+    (loop [board-data []
+           last-set nil]
+      (if-let [[board* sets] (<! board-state)]
         (cond
           (= :disable board*)
-          (do
-            (unlisten-cards! board-el)
-            (recur (doall (map unbind-card! board-data))))
+          (do (unlisten-cards! board-el)
+              (recur (doall (map unbind-card! board-data))
+                     (last sets)))
 
           (= :enable board*)
-          (do
-            (listen-cards! board-el)
-            (recur (doall (map #(bind-card! card-sel %) board-data))))
+          (do (listen-cards! board-el)
+              (recur (doall (map #(bind-card! card-sel %) board-data))
+                     (last sets)))
 
           (set? board*)
           (let [board (set (map :card board-data))
@@ -99,7 +100,8 @@
                 +cards (s/difference board* board)]
             (recur (-> board-data
                        (remove-cards! -cards)
-                       (add-cards! board-el card-sel +cards)))))
+                       (add-cards! board-el card-sel +cards))
+                   (last sets))))
         board-data))))
 
 (defn create! [container board-state card-sel]

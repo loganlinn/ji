@@ -76,7 +76,7 @@
   .selected {
     background-color: $selected-color;
   }
-  .new {
+  .new a {
     background-color: lighten($bg, 10%);
   }
 }

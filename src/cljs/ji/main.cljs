@@ -99,6 +99,20 @@
         (<! close-chan)
         (dom/remove! modal))))
 
+(defn go-game-state
+  "Distributes new game state to UI components"
+  [{:keys [board players sets cards-remaining] :as game} board-state player-state]
+  (go
+    (>! board-state [board sets])
+    (>! player-state [players sets])
+
+    (dom/set-text! (sel1 [:.board :.cards-remaining])
+                   (str "Cards remaining: " (or cards-remaining "?")))
+
+    (render-solutions! (solve-board board)) ;; removeme cheater
+
+    game))
+
 (defn go-game [container in out player-id]
   (let [card-sel (chan)
         board-state (chan)
@@ -135,16 +149,8 @@
               (do (recur))
 
               (instance? msg/GameStateMessage msg)
-              (let [game* (:game msg)
-                    board* (set (:board game*))
-                    players* (:players game*)]
-
-                (>! board-state board*)
-                (>! player-state [players* (:sets game*)])
-                (dom/set-text! (sel1 [:.board :.cards-remaining])
-                               (str "Cards remaining: " (get-in msg [:game :cards-remaining] "?")))
-                (render-solutions! (solve-board board*)) ;; removeme cheater
-                (recur))
+              (do (go-game-state (:game msg) board-state player-state)
+                  (recur))
 
               (instance? msg/GameFinishMessage msg)
               (let [{:keys [game]} msg]
