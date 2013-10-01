@@ -7,6 +7,7 @@
                  [org.clojure/core.async "0.1.0-SNAPSHOT"]
                  [org.clojure/tools.reader "0.7.6"]
                  [org.clojure/core.match "0.2.0-rc5"]
+                 [com.taoensso/timbre "2.6.2"]
                  [environ "0.4.0"]
                  [hiccup "1.0.4"]
                  [ring/ring-jetty-adapter "1.2.0"]

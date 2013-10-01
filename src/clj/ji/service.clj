@@ -5,6 +5,7 @@
             [ji.domain.game :as game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
             [ji.util.async :refer [map-source]]
+            [taoensso.timbre :refer [debugf info]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
             [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
@@ -26,7 +27,7 @@
   (when (seq clients)
     (broadcast-msg! (msg/game-state :game game) clients)))
 
-(defn- exit-game!
+(defn- finish-game!
   [{:keys [game clients] :as game-env}]
   (broadcast-msg! (msg/map->GameFinishMessage {:game game}) clients)
   ;(doseq [client clients] (close! (:out client)))
@@ -37,11 +38,11 @@
   (go (loop []
         (let [{:keys [game clients join-chan]} @game-env]
           (if (game-over? game)
-            (exit-game! @game-env)
+            (finish-game! @game-env)
             (let [[msg sc] (alts! (cons join-chan (map :in clients)))
                   msg-client (some #(when (= (:in %) sc) %) clients)]
               (match [msg sc]
-                     [nil join-chan] (exit-game! @game-env)
+                     [nil join-chan] (finish-game! @game-env)
 
                      ;; Player Join
                      [msg join-chan]
@@ -69,9 +70,7 @@
                          (recur))
 
                      ;; Unknown Input
-                     :else (do
-                             (println "Unknown message" msg)
-                             (recur)))))))))
+                     :else (recur))))))))
 
 (defn init-game-env!
   [game-envs game-id]
@@ -81,7 +80,7 @@
         game-chan (go-game game-env)]
     (swap! game-envs assoc game-id game-env)
     (go (let [finshed-game (<! game-chan)]
-          (println "GAME FINISH" finshed-game)
+          (println "Game finished" finshed-game)
           (swap! game-envs dissoc (:id finshed-game))))
     game-env))
 
