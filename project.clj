@@ -32,7 +32,7 @@
                        {:source-paths ["src/cljs"]
                         :compiler {:optimizations :whitespace
                                    :pretty-print true
-                                   :output-to "out/public/js/main.js"}}
+                                   :output-to "resources/public/js/main.js"}}
                        :prod
                        {:source-paths ["src/cljs"]
                         :compiler {:optimizations :advanced

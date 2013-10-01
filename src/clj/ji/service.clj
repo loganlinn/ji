@@ -140,6 +140,5 @@
                  (tmpl/render-error "Game full"))
                (route/not-found (tmpl/render-game-create game-id))))
         (GET "/" [] {:status 302 :headers {"Location" "/games"} :body ""})
-        (route/files "/" {:root "out/public"})
-        (route/files "/" {:root "public"}))
+        (route/resources "/"))
       (wrap-params)))
