@@ -34,6 +34,7 @@
   game-env)
 
 (defn go-game
+  ;; TODO move to ji.service.game
   [game-env]
   (go (loop []
         (let [{:keys [game clients join-chan]} @game-env]

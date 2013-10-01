@@ -13,6 +13,7 @@
 
 (defn game-msg? [m] (satisfies? IGameMessage m))
 
+;; TODO move to ji.service.game
 (extend-protocol IGameMessage
   PlayerSetMessage
   (apply-message [{:keys [cards player-id]} {:keys [game clients] :as game-env}]

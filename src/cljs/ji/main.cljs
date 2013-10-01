@@ -78,7 +78,7 @@
 
 (defn render-solutions!
   [sets]
-  (let [el (node [:div.panel.large-4.large-centered.small-12.columns [:h2 "psst"]])]
+  (let [el (node [:div.panel [:h2 "Hints"]])]
     (if-let [x (sel1 :#solution)] (dom/remove! x))
     (dom/append! (sel1 :.board)
                  (node [:div#solution.row.collapse el]))
@@ -140,7 +140,7 @@
                     players* (:players game*)]
 
                 (>! board-state board*)
-                (>! player-state players*)
+                (>! player-state [players* (:sets game*)])
                 (dom/set-text! (sel1 [:.board :.cards-remaining])
                                (str "Cards remaining: " (get-in msg [:game :cards-remaining] "?")))
                 (render-solutions! (solve-board board*)) ;; removeme cheater

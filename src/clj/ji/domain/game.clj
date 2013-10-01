@@ -13,7 +13,7 @@
                :fill fills})
 (def default-board-size 12)
 
-(defrecord Game [deck board players])
+(defrecord Game [deck board players sets])
 
 (defn new-deck []
   (for [s shapes c colors n numbers f fills]
@@ -51,7 +51,8 @@
 (defn new-game []
   (map->Game {:deck (-> (new-deck) (shuffle))
               :board #{}
-              :players {}}))
+              :players {}
+              :sets []}))
 
 (defn game-over? [{:keys [deck board]}]
   (empty? (solve-board (into board deck))))
@@ -87,13 +88,15 @@
 
 (defn take-set [game player-id cards]
   (println "TAKE SET" player-id cards)
-  (-> game
-      (update-in [:board] s/difference (set cards))
-      (update-player player-id update-in [:sets] conj cards)))
+  (let [cards (set cards)]
+    (-> game
+        (update-in [:board] s/difference cards)
+        (update-in [:sets] conj {:player-id player-id :cards cards})
+        (update-player player-id p/take-set cards))))
 
 (defn revoke-set [game player-id]
   (println "REVOKE SET" player-id)
-  (update-player game player-id update-in [:sets] drop-last))
+  (update-player game player-id p/revoke-set))
 
 (defn draw-cards [n {:keys [deck board] :as game}]
   (assoc game
@@ -103,3 +106,8 @@
 (defn valid-set? [game cards]
   (and (s/subset? cards (:board game))
        (is-set? cards)))
+
+(defn player-sets [game player-id]
+  (->> (:sets game)
+       (filter #(= player-id (:player-id %)))
+       (map :cards)))
