@@ -50,8 +50,7 @@
           [:div#messages.large-12.columns]
           [:div#content.large-12.columns
            ~@(:content blocks)]
-          [:script "document.write('<script src=/js/vendor/' + ('__proto__' in {} ? 'zepto' : 'jquery') + '.js><\\/script>');"]
-          (page/include-js "/js/foundation.min.js") ;; TODO include individually
+          (page/include-js "/js/vendor/jquery-2.0.3.min.js" "/js/foundation.min.js") ;; TODO include foundation components individually
           [:script "$(document).foundation();"]
           ~@(:body-end blocks)]))))
 
