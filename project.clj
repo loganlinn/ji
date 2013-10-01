@@ -37,5 +37,5 @@
                        {:source-paths ["src/cljs"]
                         :compiler {:optimizations :advanced
                                    :pretty-print false
-                                   :output-to "out/public/js/main.js"}}}
+                                   :output-to "resources/public/js/main.js"}}}
               :crossovers [ji.domain]})
