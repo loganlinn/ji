@@ -16,6 +16,8 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
+(defn- separate [f coll] [(filter f coll) (filter (complement f) coll)])
+
 (defn card-selector [card] (str ".card[data-card-id='" (card/card-id card) "']"))
 (defn player-selector [player-id] (str "[data-player-id='" player-id "']"))
 
@@ -42,9 +44,7 @@
   [card]
   (let [card (unbind-card! card)]
     (when-let [el (:el card)]
-      (go
-        (<! (timeout 5000));; TODO use transition event
-        (dom/remove! el)))
+      (dom/remove! el))
     (dissoc card :el)))
 
 (defn add-card!
@@ -82,23 +82,29 @@
   (defn unlisten-cards! [board-el]
     (dom/unlisten! [board-el :a] :click on-card-click)))
 
-(defn transition-set! [{:keys [player-id cards]}]
+(def transition-duration 500) ;; ms, defined in app.scss
+
+(defn transition-set!
+  "Returns updated board-data after removing the cards assocated with the set
+  and transitioning them to element of the player who found it.
+  If element for player isn't found, returns board-data unmodified"
+  [board-data {:keys [player-id cards]}]
+  (assert (set? cards))
   (if-let [player-el (sel1 [:#players (player-selector player-id)])]
     (let [cards-el (sel1 [:#board :.cards])
-          {cards-left :left cards-top :top} (dom/bounding-client-rect cards-el)
-          {player-left :left player-top :top} (dom/bounding-client-rect player-el)
-          ;; find card-els, backout to immediate ul.cards child
-          card-els (->> (map #(sel1 cards-el (card-selector %)) cards)
-                        (map (fn [card-el] (some #(if (= cards-el (.-parentNode %)) %)
-                                                 (dom/ancestor-nodes card-el)))))
-          left (- player-left cards-left)
-          top (- player-top cards-top (-> card-els first
-                                          dom/bounding-client-rect
-                                          :height (/ 4)))]
-      (doseq [card-el card-els]
-        (dom/set-px! card-el :top top :left left)))))
+          [cards-data board-data*] (separate (comp cards :card) board-data)
+          {:keys [left top]} (->> [player-el cards-el]
+                                  (map dom/bounding-client-rect)
+                                  (apply merge-with -))]
+      (go
+        (doseq [card-data cards-data]
+          (dom/set-px! (:el card-data) :top top :left left :width 20))
+        (<! (timeout (- transition-duration 50)))
+        (doseq [card-data cards-data] (remove-card! card-data)))
+      board-data*)
+    board-data))
 
-(defn transition-sets! [sets] (doseq [s sets] (transition-set! s)))
+(defn transition-sets! [board-data sets] (reduce transition-set! board-data sets))
 
 (defn go-board-ui
   [board-el board-state card-sel]
@@ -125,9 +131,8 @@
               +cards (s/difference board old-board)
               new-sets (->> (drop num-sets sets)
                             (filter #(s/subset? (:cards %) old-board)))]
-          (println "new sets" new-sets)
-          (transition-sets! new-sets)
           (recur (-> board-data
+                     (transition-sets! new-sets)
                      (remove-cards! -cards)
                      (add-cards! board-el card-sel +cards))
                  (count sets)))
@@ -148,3 +153,4 @@
       (when-let [board-el (sel1 container :#board)]
         (unlisten-cards! board-el)
         (dom/remove! board-el)))))
+
