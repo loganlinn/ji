@@ -16,27 +16,6 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
-(defn abs-offset-top
-  "Computes an element's offset from top from of page"
-  [elem]
-  (->> (dom/ancestor-nodes elem)
-       (map #(or (.-offsetTop %) 0))
-       (reduce + (.-offsetTop elem))))
-
-(defn abs-offset-left
-  "Computes an element's offset from left from of page"
-  [elem]
-  (->> (dom/ancestor-nodes elem)
-       (map #(or (.-offsetLeft %) 0))
-       (reduce + (.-offsetLeft elem))))
-
-(defn abs-offsets
-  [el]
-  (reduce (fn [[left top] el]
-            [(+ left (or (.-offsetLeft el) 0)) (+ top (or (.-offsetTop el) 0))])
-          [(.-offsetLeft el) (.-offsetTop el)]
-          (dom/ancestor-nodes el)))
-
 (defn card-selector [card] (str ".card[data-card-id='" (card/card-id card) "']"))
 (defn player-selector [player-id] (str "[data-player-id='" player-id "']"))
 
