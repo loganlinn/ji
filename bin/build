@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-lein cljsbuild once prod
+lein cljsbuild once dev
 bundle install
 bundle exec compass compile
 lein uberjar
