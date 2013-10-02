@@ -72,7 +72,7 @@
     (go (loop []
           (when-let [cards (<! sels)]
             (>! out (msg/->PlayerSetMessage cards))
-            (doseq [el (sel [:.board :.selected])]
+            (doseq [el (sel [:#board :.selected])]
               (dom/remove-class! el "selected"))
             (recur))))))
 
@@ -80,7 +80,7 @@
   [sets]
   (let [el (node [:div.panel [:h2 "Hints"]])]
     (if-let [x (sel1 :#solution)] (dom/remove! x))
-    (dom/append! (sel1 :.board)
+    (dom/append! (sel1 :#board)
                  (node [:div#solution.row.collapse el]))
     (doseq [s sets]
       (dom/append! el (node [:div.set (map card-tmpl s)])))))
@@ -106,7 +106,7 @@
     (>! board-state [board sets])
     (>! player-state [players sets])
 
-    (dom/set-text! (sel1 [:.board :.cards-remaining])
+    (dom/set-text! (sel1 [:#board :.cards-remaining])
                    (str "Cards remaining: " (or cards-remaining "?")))
 
     (render-solutions! (solve-board board)) ;; removeme cheater
@@ -198,10 +198,10 @@
             (if (msg/error? result)
               (show-alert! (:message result)))))))
 
-  ;(let [dict "abcdefghijklmnopqrstuvwxyz"
-  ;username (apply str (for [x (range 5)] (rand-nth dict)))]
-  ;(go (<! (timeout 50))
-  ;(dom/set-value! (sel1 "input[name='player-id']") username)
-  ;(<! (timeout 12))
-  ;(dom/fire! (sel1 "input[type=submit]") :click)))
+  (let [dict "abcdefghijklmnopqrstuvwxyz"
+        username (apply str (for [x (range 5)] (rand-nth dict)))]
+    (go (<! (timeout 50))
+        (dom/set-value! (sel1 "input[name='player-id']") username)
+        (<! (timeout 12))
+        (dom/fire! (sel1 "input[type=submit]") :click)))
   )

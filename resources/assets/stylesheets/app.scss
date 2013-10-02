@@ -63,7 +63,7 @@ $card-width: 73px;
   display: inline-block;
 }
 
-.board {
+#board {
   $selected-color: yellow;
   $bg: #d9d9d9;
   @include panel($bg);
@@ -84,7 +84,7 @@ $card-width: 73px;
   $each-height: ($card-height + 15px);
   $cols: 3;
   $rows: 4;
-  $animate-duration: 0.7s;
+  $animate-duration: 0.42s;
 
   position: relative;
   list-style: none;

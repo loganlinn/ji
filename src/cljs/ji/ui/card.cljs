@@ -1,13 +1,23 @@
 (ns ji.ui.card
+  (:require [dommy.core :as dom])
   (:require-macros
-    [dommy.macros :refer [deftemplate]]))
+    [dommy.macros :refer [sel1 deftemplate]]))
 
-(let [m {:solid "f" :striped "s" :outlined "e"
-         :oval "o" :squiggle "s" :diamond "d"
-         :red "r" :green "g" :purple "b"}]
-  (deftemplate card-tmpl [{:keys [shape color number fill] :as card}]
-    [:span.card
-     [:img
-      {:src (str "/cards/" number (m fill) (m color) (m shape) ".png")
-       :alt ""}]]))
+;; TODO obfuscation!
+
+(def dict {:solid "f" :striped "s" :outlined "e"
+           :oval "o" :squiggle "s" :diamond "d"
+           :red "r" :green "g" :purple "b"})
+
+(defn card-src [{:keys [shape color number fill]}]
+  (str "/cards/" number (dict fill) (dict color) (dict shape) ".png"))
+
+(defn card-id [card] (hash card))
+
+(defn is-card-elem? [card elem]
+  (=  (card-id card) (dom/attr elem "data-card-id")))
+
+(deftemplate card-tmpl [card]
+  [:span.card {:data-card-id (card-id card)}
+   [:img {:src (card-src card) :alt ""}]])
 
