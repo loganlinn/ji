@@ -35,6 +35,8 @@
     `(defn ~title ~bindings
        (page/html5
          [:head
+          [:meta {:charset "utf-8"}]
+          [:meta {:name "viewport" :content "width=device-width"}]
           [:title ~page-title]
           (page/include-css "/stylesheets/app.css")
           (page/include-js "/js/vendor/custom.modernizr.js")]

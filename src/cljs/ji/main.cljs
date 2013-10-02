@@ -109,7 +109,7 @@
     (dom/set-text! (sel1 [:#board :.cards-remaining])
                    (str "Cards remaining: " (or cards-remaining "?")))
 
-    (render-solutions! (solve-board board)) ;; removeme cheater
+    ;(render-solutions! (solve-board board)) ;; removeme cheater
 
     game))
 
