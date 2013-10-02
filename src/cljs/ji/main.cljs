@@ -182,7 +182,7 @@
 (defn ^:export init []
   (let [container (sel1 :#game)
         join-submit (chan)
-        game-id (dom/attr (sel1 :#game) "data-game-id")]
+        game-id (dom/attr container "data-game-id")]
     (clear! container)
     (dom/append! container (join-tmpl game-id))
     (dom/listen-once! (sel1 :form.join-game) :submit
@@ -198,10 +198,10 @@
             (if (msg/error? result)
               (show-alert! (:message result)))))))
 
-  (let [dict "abcdefghijklmnopqrstuvwxyz"
-        username (apply str (for [x (range 5)] (rand-nth dict)))]
-    (go (<! (timeout 50))
-        (dom/set-value! (sel1 "input[name='player-id']") username)
-        (<! (timeout 12))
-        (dom/fire! (sel1 "input[type=submit]") :click)))
+  ;(let [dict "abcdefghijklmnopqrstuvwxyz"
+        ;username (apply str (for [x (range 5)] (rand-nth dict)))]
+    ;(go (<! (timeout 50))
+        ;(dom/set-value! (sel1 "input[name='player-id']") username)
+        ;(<! (timeout 12))
+        ;(dom/fire! (sel1 "input[type=submit]") :click)))
   )
