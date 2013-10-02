@@ -46,7 +46,7 @@
            [:section.top-bar-section
             [:ul.left
              [:li.divider]
-             [:li [:a {:href "/games"} "All Games"]]]]]
+             [:li [:a {:href "/games"} "Lobby"]]]]]
           [:div#messages.large-12.columns]
           [:div#content.large-12.columns
            ~@(:content blocks)]
