@@ -78,7 +78,7 @@
      {:method "POST"
       :action (game-url)}
      [:input {:type "hidden" :name "game-id" :value game-id}]
-     [:div.row
+     [:div.row.collapse
       [:div.large-6.small-12.columns.large-centered
        [:h2 "Game does not exist ..yet!"]
        [:input.button
