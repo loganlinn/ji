@@ -90,23 +90,21 @@
     [:tr
      [:td id]
      [:td.players (format "%d/%d" num-clients max-clients)]
-     [:td (when (< num-clients max-clients) [:a.button {:href (game-url id)} "Join"])]]))
+     [:td.actions (when (< num-clients max-clients) [:a.button {:href (game-url id)} "Join"])]]))
 
 (defpage lobby [game-envs]
   (defblock content
-    [:div.row.collapse
+    [:div#lobby.row.collapse
+     [:form.create-game
+      {:method "POST"
+       :action (game-url)}
+      [:div.row.collapse
+       [:div.large-6.small-12.columns
+        [:input.button
+         {:type "submit"
+          :value "Create Game"}]]]]
      [:h1 "Games"]
-     [:div.large-12.columns
-      [:form
-       {:method "POST"
-        :action (game-url)}
-       [:div.row
-        [:div.large-6.small-12.columns
-         [:input.button
-          {:type "submit"
-           :value "Create Game"}]]]]]
-     [:ul.large-12.columns
-      [:table
-       [:thead [:tr [:th "Name"] [:th "Players"] [:th ""]]]
-       [:tbody (for [game-env (vals game-envs)]
-                 (lobby-row @game-env))]]]]))
+     [:table.games.large-12.columns
+      [:thead [:tr [:th "Name"] [:th "Players"] [:th ""]]]
+      [:tbody (for [game-env (vals game-envs)]
+                (lobby-row @game-env))]]]))

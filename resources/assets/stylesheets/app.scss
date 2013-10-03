@@ -174,3 +174,16 @@ $board-bg: #d9d9d9;
     text-align: center;
   }
 }
+
+#lobby {
+  form.create-game {
+    float: right;
+    margin: 15px 0 0 0;
+  }
+
+  table.games {
+    td.actions {
+      text-align: right;
+    }
+  }
+}
