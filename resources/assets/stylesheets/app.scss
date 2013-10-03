@@ -74,6 +74,10 @@ $board-bg: #d9d9d9;
   $rows: 4;
   $animate-duration: 0.5s;
   $selected-color: yellow;
+
+  .card-target {
+    display:block;
+  }
   .selected {
     background-color: $selected-color;
   }

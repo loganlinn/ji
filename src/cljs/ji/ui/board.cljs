@@ -49,7 +49,7 @@
 
 (defn add-card!
   [board-el card-sel card]
-  (let [el (node [:li [:a {:href "#"} (card/card-tmpl card)]])]
+  (let [el (node [:li [:a.card-target {:href "#"} (card/card-tmpl card)]])]
     (dom/append! (sel1 board-el :.cards) el)
     (go (dom/add-class! el "new")
         (<! (timeout 2000))
@@ -75,7 +75,7 @@
 (letfn [(on-card-click [e]
           (.preventDefault e)
           (-> (.-target e)
-              (dom/closest :a)
+              (dom/closest :.card-target)
               (dom/toggle-class! "selected")))]
   (defn listen-cards! [board-el]
     (dom/listen! [board-el :a] :click on-card-click))
