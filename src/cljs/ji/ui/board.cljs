@@ -93,12 +93,13 @@
   (if-let [player-el (sel1 [:#players (player-selector player-id)])]
     (let [cards-el (sel1 [:#board :.cards])
           [cards-data board-data*] (separate (comp cards :card) board-data)
-          {:keys [left top]} (->> [player-el cards-el]
-                                  (map dom/bounding-client-rect)
-                                  (apply merge-with -))]
+          [left top] (->> [player-el cards-el]
+                          (map (comp (juxt :left :top)
+                                     dom/bounding-client-rect))
+                          (apply map -))]
+      (doseq [card-data cards-data]
+        (dom/set-px! (:el card-data) :top top :left left :width 20))
       (go
-        (doseq [card-data cards-data]
-          (dom/set-px! (:el card-data) :top top :left left :width 20))
         (<! (timeout (- transition-duration 50)))
         (doseq [card-data cards-data] (remove-card! card-data)))
       board-data*)
