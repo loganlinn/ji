@@ -10,6 +10,7 @@
             [ji.util.helpers
              :refer [clear! event-chan map-source map-sink copy-chan into-chan]]
             [clojure.set :as s]
+            [clojure.string :as str]
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
             [cljs.core.match]
@@ -190,7 +191,8 @@
     (go (let [e (<! join-submit)
               t (.-target e)
               game-id (dom/value (sel1 t "input[name='game-id']"))
-              player-id (dom/value (sel1 t "input[name='player-id']"))
+              player-id (-> (sel1 t "input[name='player-id']")
+                            (dom/value) (str/trim))
               result-chan (run-game! container game-id player-id)]
           (clear! (sel1 :#messages))
           (dom/remove! (sel1 :form.join-game))
