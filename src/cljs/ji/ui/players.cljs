@@ -23,7 +23,9 @@
      {:data-player-id player-id
       :class (str/join " " [(if online? "online" "offline")
                             (if is-self? "self")])}
-     [:h5 player-id]
+     [:h5
+      [:span.hide-for-small player-id]
+      [:span.player-id-abbr.show-for-small (-> player-id first str/upper-case)]]
      [:span.online-ind]
      [:span.subheader (str "score: " (:score player))]
      [:ul.sets

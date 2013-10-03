@@ -63,21 +63,9 @@ $card-width: 73px;
   display: inline-block;
 }
 
+$board-bg: #d9d9d9;
 #board {
-  $selected-color: yellow;
-  $bg: #d9d9d9;
-  @include panel($bg);
-
-  a {
-    display: inline-block;
-    padding: 1em 1.75em;
-  }
-  .selected {
-    background-color: $selected-color;
-  }
-  .new a {
-    background-color: lighten($bg, 10%);
-  }
+  @include panel($board-bg);
 }
 
 .cards {
@@ -85,6 +73,13 @@ $card-width: 73px;
   $cols: 3;
   $rows: 4;
   $animate-duration: 0.5s;
+  $selected-color: yellow;
+  .selected {
+    background-color: $selected-color;
+  }
+  .new a {
+    background-color: lighten($board-bg, 10%);
+  }
 
   position: relative;
   list-style: none;
@@ -172,5 +167,10 @@ $card-width: 73px;
       width: 33px;
       height: auto;
     }
+  }
+
+  .player-id-abbr {
+    width: 100%;
+    text-align: center;
   }
 }
