@@ -160,6 +160,7 @@
               (do
                 (close! board-state)
                 (close! player-state)
+                (close! status-state)
                 (msg/error "Disconnected from server"))
 
               (= msg heartbeat-resp)
