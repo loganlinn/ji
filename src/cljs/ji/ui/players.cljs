@@ -17,6 +17,16 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
+(defn player-order
+  "Orders the players"
+  [player-id players]
+  (sort-by (fn [[pid plr]] [(= player-id pid)
+                            (p/online? plr)
+                            (count (:sets plr))
+                            pid])
+           >
+           players))
+
 (deftemplate player-tmpl [player-id player sets is-self?]
   (let [online? (p/online? player)]
     [:li.player
@@ -32,46 +42,38 @@
       (for [ji (take 9 sets)] ;; TODO handle revoked sets
         [:li (map card-tmpl ji)])]]))
 
-(defn player-order
-  "Orders the players"
-  [player-id players]
-  (sort-by (fn [[pid plr]] [(= player-id pid)
-                            (p/online? plr)
-                            (count (:sets plr))
-                            pid])
-           >
-           players))
-
 (deftemplate players-tmpl [player-id players sets]
-  ;(println (pr-str (players player-id)))
-  ;(println (pr-str (dissoc players player-id)))
   (let [sets-by-pid (group-by :player-id sets)
         player-sets #(map :cards (sets-by-pid %))]
-    [:div.players.large-3.small-2.columns
-     [:div.row.collapse
-      [:ul.large-block-grid-1
-       (map (fn [[pid player]]
-              (player-tmpl pid player (player-sets pid) (= player-id pid)))
-            (player-order player-id players))]]]))
+    [:div.row.collapse
+     [:ul.players
+      (map (fn [[pid player]]
+             (player-tmpl pid player (player-sets pid) (= player-id pid)))
+           (player-order player-id players))]]))
 
 (defn go-players-ui [container player-id players-chan]
   (go (loop [players {}]
-        (if-let [[players' sets] (<! players-chan)]
+        (match (<! players-chan)
+          nil players
+
+          {:players players' :sets sets}
           (if (= players players')
             (recur players)
             (let [node (players-tmpl player-id players' sets)]
-              (dom/set-html! container "")
-              (dom/append! container node)
+              (dom/replace-contents! container node)
               (recur players')))
-          players))))
+
+          :else (recur players)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Public
 
 (defn create! [container player-id players-chan]
-  (let [players-container (node [:div#players
-                                 (players-tmpl player-id {} [])])]
-    (dom/prepend! container players-container)
-    (go-players-ui players-container player-id players-chan)))
+  (->> (players-tmpl player-id {} [])
+       (dom/replace-contents! container))
+  (go-players-ui container player-id players-chan))
 
 (defn destroy!
   [c container]
   (go (<! c)
-      (dom/remove! (sel1 container :.players))))
+      (dom/set-html! container "")))

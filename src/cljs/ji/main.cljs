@@ -3,9 +3,11 @@
              :refer [new-deck solve-board is-set?]]
             [ji.domain.player :as player]
             [ji.domain.messages :as msg]
+            [ji.ui :as ui]
             [ji.ui.card :refer [card-tmpl]]
             [ji.ui.board :as board-ui]
             [ji.ui.players :as players-ui]
+            [ji.ui.status :as status-ui]
             [ji.websocket :as websocket]
             [ji.util.helpers
              :refer [clear! event-chan map-source map-sink copy-chan into-chan]]
@@ -48,6 +50,14 @@
       [:div.small-2.columns
        [:input.button.postfix {:type "submit" :value "join"}]]]]]])
 
+(deftemplate game-tmpl []
+  [:div.row.collapse
+   [:div.large-3.small-2.columns
+    [:div#game-status]
+    [:div#players]]
+   [:div.large-9.small-10.columns
+    [:div#board]]])
+
 (defn show-alert!
   [msg]
   (dom/append!
@@ -62,6 +72,7 @@
          (if (>= (count cs) 3)
            (do (>! c cs) (recur #{}))
            (let [v (<! card-chan)]
+             (println "selected" v)
              (cond
                (nil? v) (close! c)
                (cs v) (recur (disj cs v))
@@ -102,27 +113,32 @@
 
 (defn go-game-state
   "Distributes new game state to UI components"
-  [{:keys [board players sets cards-remaining] :as game} board-state player-state]
+  [game board-state player-state status-state]
   (go
-    (>! board-state [board sets])
-    (>! player-state [players sets])
+    (>! board-state (select-keys game [:board :sets]))
+    (>! player-state (select-keys game [:players :sets]))
+    (>! status-state (select-keys game [:cards-remaining :sets]))
 
-    (dom/set-text! (sel1 [:#board :.cards-remaining])
-                   (str "Cards remaining: " (or cards-remaining "?")))
-
-    ;(render-solutions! (solve-board board)) ;; removeme cheater
+    ;(render-solutions! (solve-board (:board game))) ;; removeme cheater
 
     game))
 
 (defn go-game [container in out player-id]
   (let [card-sel (chan)
+        board-container (sel1 container :#board)
         board-state (chan)
-        player-state (chan)]
+        player-container (sel1 container :#players)
+        player-state (chan)
+        status-container (sel1 container :#game-status)
+        status-state (chan)]
     (go-emit-selections out card-sel)
-    (-> (board-ui/create! container board-state card-sel)
-        (board-ui/destroy! container))
-    (-> (players-ui/create! container player-id player-state)
-        (players-ui/destroy! container))
+    (-> (board-ui/create! board-container board-state card-sel)
+        (board-ui/destroy! board-container))
+    (-> (players-ui/create! player-container player-id player-state)
+        (players-ui/destroy! player-container))
+
+    (ui/run-component! (status-ui/create status-state)
+                       status-container)
 
     (let [el (node [:button#disable-board.button "Disable Board"])]
       (dom/append! (sel1 :body) el)
@@ -150,7 +166,7 @@
               (do (recur))
 
               (instance? msg/GameStateMessage msg)
-              (do (go-game-state (:game msg) board-state player-state)
+              (do (go-game-state (:game msg) board-state player-state status-state)
                   (recur))
 
               (instance? msg/GameFinishMessage msg)
@@ -179,13 +195,11 @@
             (<! (go-game container (:in server) (:out server) player-id)))
           (msg/error "Unable to join"))))))
 
-
 (defn ^:export init []
   (let [container (sel1 :#game)
         join-submit (chan)
         game-id (dom/attr container "data-game-id")]
-    (clear! container)
-    (dom/append! container (join-tmpl game-id))
+    (dom/replace-contents! container (join-tmpl game-id))
     (dom/listen-once! (sel1 :form.join-game) :submit
                       (fn [e] (.preventDefault e) (put! join-submit e)))
     (go (let [e (<! join-submit)
@@ -193,14 +207,15 @@
               game-id (dom/value (sel1 t "input[name='game-id']"))
               player-id (-> (sel1 t "input[name='player-id']")
                             (dom/value) (str/trim))
+              container (dom/replace-contents! container (game-tmpl))
               result-chan (run-game! container game-id player-id)]
           (clear! (sel1 :#messages))
-          (dom/remove! (sel1 :form.join-game))
           (let [result (<! result-chan)]
             (if (msg/error? result)
               (show-alert! (:message result)))))))
 
   ;(let [dict "abcdefghijklmnopqrstuvwxyz"
+        ;dict "lj"
         ;username (apply str (for [x (range 5)] (rand-nth dict)))]
     ;(go (<! (timeout 50))
         ;(dom/set-value! (sel1 "input[name='player-id']") username)

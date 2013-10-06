@@ -1,4 +1,5 @@
 (ns ji.ui.board
+  "UI component for game board"
   (:require [ji.domain.game :as game
              :refer [new-deck solve-board is-set?]]
             [ji.domain.messages :as msg]
@@ -22,12 +23,11 @@
 (defn player-selector [player-id] (str "[data-player-id='" player-id "']"))
 
 (deftemplate board-tmpl []
-  [:div#board.large-9.small-10.columns
-   [:div.row.collapse
-    [:div.large-12.columns
-     [:ul.cards]]
-    [:div.large-12.columns
-     [:span.cards-remaining]]]])
+  [:div.board.row.collapse
+   [:div.large-12.columns
+    [:ul.cards]]
+   [:div.large-12.columns
+    [:span.cards-remaining]]])
 
 (defn bind-card!
   [card-sel {:keys [el card] :as data}]
@@ -84,14 +84,14 @@
 
 (def transition-duration 500) ;; ms, defined in app.scss
 
-(defn transition-set!
+(defn transition-set! ;; TODO pass container
   "Returns updated board-data after removing the cards assocated with the set
   and transitioning them to element of the player who found it.
   If element for player isn't found, returns board-data unmodified"
   [board-data {:keys [player-id cards]}]
   (assert (set? cards))
   (if-let [player-el (sel1 [:#players (player-selector player-id)])]
-    (let [cards-el (sel1 [:#board :.cards])
+    (let [cards-el (sel1 [:.board :.cards])
           [cards-data board-data*] (separate (comp cards :card) board-data)
           [left top] (->> [player-el cards-el]
                           (map (comp (juxt :left :top)
@@ -126,7 +126,7 @@
             (recur (doall (map #(bind-card! card-sel %) board-data))
                    num-sets))
 
-        [board sets]
+        {:board board :sets sets}
         (let [old-board (set (map :card board-data))
               -cards (s/difference old-board board)
               +cards (s/difference board old-board)
@@ -140,9 +140,12 @@
         :else
         (recur board-data num-sets)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Public
+
 (defn create! [container board-state card-sel]
   (let [board-el (board-tmpl)]
-    (dom/append! container board-el)
+    (dom/replace-contents! container board-el)
     (listen-cards! board-el)
     (go-board-ui board-el board-state card-sel)))
 
@@ -151,7 +154,6 @@
   (go
     (let [board-data (<! c)]
       (doall (map remove-card! board-data))
-      (when-let [board-el (sel1 container :#board)]
-        (unlisten-cards! board-el)
-        (dom/remove! board-el)))))
+      (unlisten-cards! container)
+      (dom/replace-contents! container ""))))
 
