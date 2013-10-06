@@ -23,6 +23,7 @@
    [:img {:src (card-src card) :alt ""}]])
 
 (deftemplate set-tmpl [cards]
+  (println cards)
   [:ul.set
    {:data-set-id (set-id cards)}
    (for [card cards] [:li (card-tmpl card)])])

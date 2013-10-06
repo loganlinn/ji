@@ -23,8 +23,7 @@
     [:h5.subheader
      "Cards Remaining: " [:span (or cards-remaining "?")]]]
    [:div.last-set.columns
-    [:h5.subheader "Last Set:"]
-    [:small (str "found by " (:player-id last-set))]
+    [:h5.subheader "Last Set: " [:span (:player-id last-set)]]
     [:div.row.collapse
      [:div.large-6.large-centered.columns (card/set-tmpl (:cards last-set))]]] ])
 

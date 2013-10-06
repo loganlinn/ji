@@ -17,7 +17,13 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
-(defn- separate [f coll] [(filter f coll) (filter (complement f) coll)])
+(defn separate [f coll] [(filter f coll) (filter (complement f) coll)])
+
+(defn bounding-client-rect-diff
+  [a b]
+  (merge-with - (dom/bounding-client-rect a) (dom/bounding-client-rect b)))
+
+;;
 
 (defn card-selector [card] (str ".card[data-card-id='" (card/card-id card) "']"))
 (defn player-selector [player-id] (str "[data-player-id='" player-id "']"))
@@ -90,20 +96,16 @@
   If element for player isn't found, returns board-data unmodified"
   [board-data {:keys [player-id cards]}]
   (assert (set? cards))
-  (if-let [player-el (sel1 [:#players (player-selector player-id)])]
-    (let [cards-el (sel1 [:.board :.cards])
-          [cards-data board-data*] (separate (comp cards :card) board-data)
-          [left top] (->> [player-el cards-el]
-                          (map (comp (juxt :left :top)
-                                     dom/bounding-client-rect))
-                          (apply map -))]
-      (doseq [card-data cards-data]
-        (dom/set-px! (:el card-data) :top top :left left :width 20))
-      (go
-        (<! (timeout (- transition-duration 50)))
-        (doseq [card-data cards-data] (remove-card! card-data)))
-      board-data*)
-    board-data))
+  (let [last-set-el (sel1 [:#game-status :.last-set :.set])
+        cards-el (sel1 [:.board :.cards])
+        [cards-data board-data*] (separate (comp cards :card) board-data)
+        {:keys [left top]} (bounding-client-rect-diff last-set-el cards-el)]
+    (doseq [card-data cards-data]
+      (dom/set-px! (:el card-data) :top top :left left :width 40))
+    (go
+      (<! (timeout (- transition-duration 50)))
+      (doseq [card-data cards-data] (remove-card! card-data)))
+    board-data*))
 
 (defn transition-sets! [board-data sets] (reduce transition-set! board-data sets))
 

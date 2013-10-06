@@ -2,7 +2,7 @@
   (:require [ji.domain.player :as p]
             [ji.domain.game :as game :refer [player-offline?]]
             [ji.domain.messages :as msg]
-            [ji.ui.card :refer [card-tmpl]]
+            [ji.ui.card :as card]
             [ji.util.helpers
              :refer [event-chan map-source map-sink copy-chan into-chan]]
             [clojure.set :as s]
@@ -38,9 +38,8 @@
       [:span.player-id-abbr.show-for-small (-> player-id first str/upper-case)]]
      [:span.online-ind]
      [:span.subheader (str "score: " (:score player))]
-     [:ul.sets
-      (for [ji (take 9 sets)] ;; TODO handle revoked sets
-        [:li (map card-tmpl ji)])]]))
+     [:div.sets
+      (map card/set-tmpl (take 9 sets))]]))
 
 (deftemplate players-tmpl [player-id players sets]
   (let [sets-by-pid (group-by :player-id sets)

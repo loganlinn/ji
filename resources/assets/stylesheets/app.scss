@@ -59,131 +59,108 @@
 $card-height: 123px;
 $card-width: 73px;
 
-.card {
-  display: inline-block;
-}
-
-$board-bg: #d9d9d9;
-#board {
-  @include panel($board-bg);
-}
-
 ul.set {
   @include block-grid(3, 0px, true);
+  max-width: ($card-width + 2) * 3;
 }
 
 ul.players {
   @include block-grid(1, 0px, true);
+
+  .player {
+    @include panel($secondary-color, 5px, true);
+    margin: 0;
+
+    position: relative;
+
+    &:hover .sets {
+      display:block;
+    }
+
+    &.online .online-ind {
+      background-color: green;
+    }
+
+    .online-ind {
+      background-color: #ccc;
+      height: 5px;
+      width: 5px;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+    }
+
+    .sets {
+      display: none;
+    }
+
+    .player-id-abbr {
+      width: 100%;
+      text-align: center;
+    }
+  }
 }
 
-.cards {
-  $each-height: ($card-height + 15px);
-  $cols: 3;
-  $rows: 4;
-  $animate-duration: 0.5s;
-  $selected-color: yellow;
 
-  .card-target {
-    display:block;
-  }
-  .selected {
-    background-color: $selected-color;
-  }
-  .new a {
-    background-color: lighten($board-bg, 10%);
-  }
+#game-status {
+  @include panel($secondary-color, 5px, true);
+}
 
-  position: relative;
-  list-style: none;
-  height: $rows * $each-height;
+#board {
+  @include panel($secondary-color);
 
-  li {
-    position: absolute;
-    top: 0;
-    height: $each-height;
-    transition: all $animate-duration linear;
-    text-align: center;
-    padding: 0;
-    width: 100% / $cols;
-  }
+  .cards {
+    $each-height: ($card-height + 15px);
+    $cols: 3;
+    $rows: 4;
+    $animate-duration: 0.5s;
+    $selected-color: yellow;
 
-  @for $i from 1 through $cols {
-    li:nth-child(#{$cols}n+#{$i}) {
-      left: (($i - 1) * 100%) / $cols;
+    .card-target {
+      display:block;
     }
-  }
-
-  @for $i from 1 through ($rows - 1) {
-    li:nth-child(n+#{$i * $cols + 1}) {
-      top: ($i * 100%) / $rows;
+    .selected {
+      background-color: $selected-color;
     }
-  }
+    .new a {
+      background-color: lighten($secondary-color, 10%);
+    }
 
-  &.rows-5 {
-    $rows: 5;
+    position: relative;
+    list-style: none;
     height: $rows * $each-height;
+
+    li {
+      position: absolute;
+      top: 0;
+      height: $each-height;
+      transition: all $animate-duration linear;
+      text-align: center;
+      padding: 0;
+      width: 100% / $cols;
+    }
+
+    @for $i from 1 through $cols {
+      li:nth-child(#{$cols}n+#{$i}) {
+        left: (($i - 1) * 100%) / $cols;
+      }
+    }
+
     @for $i from 1 through ($rows - 1) {
       li:nth-child(n+#{$i * $cols + 1}) {
         top: ($i * 100%) / $rows;
       }
     }
-  }
-}
 
-.players {
-  ul {
-    margin: 0;
-  }
-  li {
-    @include reset-list-style;
-  }
-}
-.player {
-  @include panel;
-  display: block;
-  width: 100%;
-  padding: 1em;
-  float:left;
-  position: relative;
-  margin-bottom:-1px;
-
-  &.self {
-    margin-right: 3px;
-  }
-
-  &:hover .sets {
-    display:block;
-  }
-
-  &.online .online-ind {
-    background-color: green;
-  }
-
-  .online-ind {
-    background-color: #ccc;
-    height: 5px;
-    width: 5px;
-    position: absolute;
-    top: 2px;
-    right: 2px;
-  }
-
-  .sets {
-    & {
-      display: none;
+    &.rows-5 {
+      $rows: 5;
+      height: $rows * $each-height;
+      @for $i from 1 through ($rows - 1) {
+        li:nth-child(n+#{$i * $cols + 1}) {
+          top: ($i * 100%) / $rows;
+        }
+      }
     }
-    .card {
-      display: inline;
-    }
-    img {
-      width: 33px;
-      height: auto;
-    }
-  }
-
-  .player-id-abbr {
-    width: 100%;
-    text-align: center;
   }
 }
 

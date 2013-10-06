@@ -4,7 +4,7 @@
             [ji.domain.player :as player]
             [ji.domain.messages :as msg]
             [ji.ui :as ui]
-            [ji.ui.card :refer [card-tmpl]]
+            [ji.ui.card :as card-ui]
             [ji.ui.board :as board-ui]
             [ji.ui.players :as players-ui]
             [ji.ui.status :as status-ui]
@@ -95,7 +95,7 @@
     (dom/append! (sel1 :#board)
                  (node [:div#solution.row.collapse el]))
     (doseq [s sets]
-      (dom/append! el (node [:div.set (map card-tmpl s)])))))
+      (dom/append! el (card-ui/set-tmpl s)))))
 
 (defn go-game-summary [container {:keys [game] :as finish-msg}]
   (println finish-msg)
@@ -216,7 +216,7 @@
 
   ;(let [dict "abcdefghijklmnopqrstuvwxyz"
         ;dict "lj"
-        ;username (apply str (for [x (range 5)] (rand-nth dict)))]
+        ;username (apply str (for [x (range 3)] (rand-nth dict)))]
     ;(go (<! (timeout 50))
         ;(dom/set-value! (sel1 "input[name='player-id']") username)
         ;(<! (timeout 12))
