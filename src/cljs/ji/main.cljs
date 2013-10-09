@@ -119,7 +119,7 @@
     (>! player-state (select-keys game [:players :sets]))
     (>! status-state (select-keys game [:cards-remaining :sets]))
 
-    ;(render-solutions! (solve-board (:board game))) ;; removeme cheater
+    (render-solutions! (solve-board (:board game))) ;; removeme cheater
 
     game))
 
@@ -132,11 +132,11 @@
         status-container (sel1 container :#game-status)
         status-state (chan)]
     (go-emit-selections out card-sel)
-    (-> (board-ui/create! board-container board-state card-sel)
-        (board-ui/destroy! board-container))
     (-> (players-ui/create! player-container player-id player-state)
         (players-ui/destroy! player-container))
 
+    (ui/run-component! (board-ui/create board-state card-sel)
+                       board-container)
     (ui/run-component! (status-ui/create status-state)
                        status-container)
 
@@ -215,11 +215,11 @@
             (if (msg/error? result)
               (show-alert! (:message result)))))))
 
-  ;(let [dict "abcdefghijklmnopqrstuvwxyz"
-        ;dict "lj"
-        ;username (apply str (for [x (range 3)] (rand-nth dict)))]
-    ;(go (<! (timeout 50))
-        ;(dom/set-value! (sel1 "input[name='player-id']") username)
-        ;(<! (timeout 12))
-        ;(dom/fire! (sel1 "input[type=submit]") :click)))
+  (let [dict "abcdefghijklmnopqrstuvwxyz"
+        dict "lj"
+        username (apply str (for [x (range 3)] (rand-nth dict)))]
+    (go (<! (timeout 50))
+        (dom/set-value! (sel1 "input[name='player-id']") username)
+        (<! (timeout 12))
+        (dom/fire! (sel1 "input[type=submit]") :click)))
   )

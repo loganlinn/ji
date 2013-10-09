@@ -1,6 +1,7 @@
 (ns ji.ui.board
   "UI component for game board"
-  (:require [ji.domain.game :as game
+  (:require [ji.ui :as ui]
+            [ji.domain.game :as game
              :refer [new-deck solve-board is-set?]]
             [ji.domain.messages :as msg]
             [ji.ui.card :as card]
@@ -142,20 +143,21 @@
         :else
         (recur board-data num-sets)))))
 
+
+(defrecord BoardComponent [board-state card-sel]
+  ui/IComponent
+  (attach! [component container]
+    (let [board-el (board-tmpl)]
+      (dom/replace-contents! container board-el)
+      (listen-cards! board-el)
+      (go-board-ui board-el board-state card-sel)))
+  (destroy! [component container exit-data]
+    (doall (map remove-card! exit-data))
+    (unlisten-cards! container)
+    (dom/set-html! container "")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Public
 
-(defn create! [container board-state card-sel]
-  (let [board-el (board-tmpl)]
-    (dom/replace-contents! container board-el)
-    (listen-cards! board-el)
-    (go-board-ui board-el board-state card-sel)))
-
-(defn destroy!
-  [c container]
-  (go
-    (let [board-data (<! c)]
-      (doall (map remove-card! board-data))
-      (unlisten-cards! container)
-      (dom/replace-contents! container ""))))
-
+(defn create [board-state card-sel]
+  (->BoardComponent board-state card-sel))
