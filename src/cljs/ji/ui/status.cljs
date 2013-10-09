@@ -27,9 +27,9 @@
     [:div.row.collapse
      [:div.large-6.large-centered.columns (card/set-tmpl (:cards last-set))]]] ])
 
-(defn go-status-ui [container status-state]
+(defn go-status-ui [container ch]
   (go (loop []
-        (match (<! status-state)
+        (match (<! ch)
           nil
           (dom/set-html! container "")
 
@@ -44,17 +44,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Records
 
-(defrecord StatusComponent [status-state]
+(defrecord StatusComponent [ch]
   ui/IComponent
   (attach! [component container]
     (let [status-el (status-tmpl nil nil)]
       (dom/replace-contents! container status-el)
-      (go-status-ui container status-state)))
+      (go-status-ui container ch)))
   (destroy! [component container exit-data]
     (dom/set-html! container "")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Public
 
-(defn create [c]
-  (->StatusComponent c))
+(defn create [ch]
+  (->StatusComponent ch))
