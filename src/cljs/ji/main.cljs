@@ -54,10 +54,13 @@
     [:div#board]]])
 
 (defn show-alert!
-  [msg]
-  (dom/append!
-    (sel1 :#messages)
-    (node [:div.alert-box {:data-alert true} msg])))
+  ([msg] (show-alert! msg nil))
+  ([msg alert-type]
+   (dom/append!
+     (sel1 :#messages)
+     (node [:div {:class (str "alert-box " (when alert-type (name alert-type)))
+                  :data-alert true}
+            msg]))))
 
 (defn card-selector
   "todo: general partition/chunking buffer"
@@ -93,7 +96,6 @@
       (dom/append! el (card-ui/set-tmpl s)))))
 
 (defn go-game-summary [container {:keys [game] :as finish-msg}]
-  (println finish-msg)
   (go (let [modal (node [:div.reveal-modal.open
                          {:style "display:block; visibility:visible;"}
                          [:h2 "Game Complete"]
@@ -210,7 +212,7 @@
           (clear! (sel1 :#messages))
           (let [result (<! result-chan)]
             (if (msg/error? result)
-              (show-alert! (:message result)))))))
+              (show-alert! (:message result) :alert))))))
 
   (let [dict "abcdefghijklmnopqrstuvwxyz"
         dict "lj"
