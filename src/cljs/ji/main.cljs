@@ -70,7 +70,6 @@
          (if (>= (count cs) 3)
            (do (>! c cs) (recur #{}))
            (let [v (<! card-chan)]
-             (println "selected" v)
              (cond
                (nil? v) (close! c)
                (cs v) (recur (disj cs v))
