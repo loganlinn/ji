@@ -41,6 +41,9 @@
 
           :else (recur)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Records
+
 (defrecord StatusComponent [status-state]
   ui/IComponent
   (attach! [component container]

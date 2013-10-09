@@ -144,6 +144,9 @@
         (recur board-data num-sets)))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Records
+
 (defrecord BoardComponent [board-state card-sel]
   ui/IComponent
   (attach! [component container]

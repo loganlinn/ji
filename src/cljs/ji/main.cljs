@@ -132,11 +132,11 @@
         status-container (sel1 container :#game-status)
         status-state (chan)]
     (go-emit-selections out card-sel)
-    (-> (players-ui/create! player-container player-id player-state)
-        (players-ui/destroy! player-container))
 
     (ui/run-component! (board-ui/create board-state card-sel)
                        board-container)
+    (ui/run-component! (players-ui/create player-id player-state)
+                       player-container)
     (ui/run-component! (status-ui/create status-state)
                        status-container)
 

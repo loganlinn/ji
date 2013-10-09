@@ -1,5 +1,6 @@
 (ns ji.ui.players
-  (:require [ji.domain.player :as p]
+  (:require [ji.ui :as ui]
+            [ji.domain.player :as p]
             [ji.domain.game :as game :refer [player-offline?]]
             [ji.domain.messages :as msg]
             [ji.ui.card :as card]
@@ -65,14 +66,19 @@
           :else (recur players)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Records
+
+(defrecord PlayersComponent [player-id players-chan]
+  ui/IComponent
+  (attach! [component container]
+    (->> (players-tmpl player-id {} [])
+         (dom/replace-contents! container))
+    (go-players-ui container player-id players-chan))
+  (destroy! [component container exit-data]
+    (dom/set-html! container "")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Public
 
-(defn create! [container player-id players-chan]
-  (->> (players-tmpl player-id {} [])
-       (dom/replace-contents! container))
-  (go-players-ui container player-id players-chan))
-
-(defn destroy!
-  [c container]
-  (go (<! c)
-      (dom/set-html! container "")))
+(defn create [player-id players-chan]
+  (->PlayersComponent player-id players-chan))
