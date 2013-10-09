@@ -3,6 +3,7 @@
              :refer [new-deck solve-board is-set?]]
             [ji.domain.player :as player]
             [ji.domain.messages :as msg]
+            [ji.reader]
             [ji.ui :as ui]
             [ji.ui.card :as card-ui]
             [ji.ui.board :as board-ui]
@@ -16,7 +17,6 @@
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
             [cljs.core.match]
-            [cljs.reader :refer [register-tag-parser!]]
             [dommy.core :as dom]
             [dommy.template :refer [html->nodes]])
   (:require-macros
@@ -25,19 +25,14 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
-(register-tag-parser! 'ji.domain.game.Game game/map->Game)
-(register-tag-parser! 'ji.domain.player.Player player/map->Player)
-(register-tag-parser! 'ji.domain.messages.ErrorMessage msg/map->ErrorMessage)
-(register-tag-parser! 'ji.domain.messages.GameLeaveMessage msg/map->GameLeaveMessage)
-(register-tag-parser! 'ji.domain.messages.GameStateMessage msg/map->GameStateMessage)
-(register-tag-parser! 'ji.domain.messages.GameFinishMessage msg/map->GameFinishMessage)
-;(register-tag-parser! 'ji.domain.messages.GameControlMessage msg/map->GameControlMessage)
-
 (def heartbeat-interval 5000)
 (def heartbeat-req :ping)
 (def heartbeat-resp :pong)
 
-(defn separate [n coll] [(take n coll) (drop n coll)])
+(defn game-ws-uri
+  "Returns WebSocket URI for game"
+  [game-id]
+  (str "ws://" (aget js/window "location" "host") "/games/" game-id))
 
 (deftemplate join-tmpl [game-id]
   [:form.join-game
@@ -123,44 +118,47 @@
 
     game))
 
+(defn go-emit-heartbeat
+  "A go loop to regularly write heartbeat message on channel"
+  [control out interval]
+  (go (loop []
+        (let [tick (timeout interval)]
+          (match (alts! [control tick])
+            [nil control] nil
+            [_ tick] (do (>! out heartbeat-req)
+                         (recur)))))))
+
 (defn go-game [container in out player-id]
-  (let [card-sel (chan)
-        board-container (sel1 container :#board)
+  (let [control (chan) ;; TODO integrate further
+        card-sel (chan)
         board-state (chan)
-        player-container (sel1 container :#players)
         player-state (chan)
-        status-container (sel1 container :#game-status)
         status-state (chan)]
+
+    ;; Emitters
+    (go-emit-heartbeat control out heartbeat-interval)
     (go-emit-selections out card-sel)
 
+    ;; Init components
     (ui/run-component! (board-ui/create board-state card-sel)
-                       board-container)
+                       (sel1 container :#board))
     (ui/run-component! (players-ui/create player-id player-state)
-                       player-container)
+                       (sel1 container :#players))
     (ui/run-component! (status-ui/create status-state)
-                       status-container)
+                       (sel1 container :#game-status))
 
-    (let [el (node [:button#disable-board.button "Disable Board"])]
-      (dom/append! (sel1 :body) el)
-      (dom/listen! el :click #(put! board-state :disable)))
-    (let [el (node [:button#enable-board.button "Enable Board"])]
-      (dom/append! (sel1 :body) el)
-      (dom/listen! el :click #(put! board-state :enable)))
-
-    ;; Heartbeat
-    (go-loop
-      (<! (timeout heartbeat-interval))
-      (>! out heartbeat-req))
-
-    ;; driver loop
+    ;; main game loop
     (go (loop []
           (let [msg (<! in)]
             (cond
               (nil? msg)
               (do
+                (close! control)
+                (close! card-sel)
                 (close! board-state)
                 (close! player-state)
                 (close! status-state)
+                (dom/set-html! container "")
                 (msg/error "Disconnected from server"))
 
               (= msg heartbeat-resp)
@@ -180,21 +178,20 @@
 
               :else
               (do (println "UNHANDLED MSG" msg)
-                  (recur)))
-            )))))
+                  (recur))))))))
 
 (defn run-game!
   [container game-id player-id]
-  (let [ws-uri (str "ws://" (aget js/window "location" "host") "/games/" game-id)]
-    (go
-      (let [{:keys [in out] :as server} (<! (websocket/connect! ws-uri))
-            msg (msg/join-game :player-id player-id)]
-        (if (msg/valid? msg)
-          (do
-            (>! out msg)
-            ;; TODO get join confirmation
-            (<! (go-game container (:in server) (:out server) player-id)))
-          (msg/error "Unable to join"))))))
+  (go
+    (let [ws-connect (websocket/connect! (game-ws-uri game-id))
+          server (<! ws-connect)
+          msg (msg/join-game :player-id player-id)]
+      (if (msg/valid? msg)
+        (do
+          (>! (:out server) msg)
+          ;; TODO get join confirmation
+          (<! (go-game container (:in server) (:out server) player-id)))
+        (msg/error "Unable to join")))))
 
 (defn ^:export init []
   (let [container (sel1 :#game)
@@ -223,3 +220,5 @@
         (<! (timeout 12))
         (dom/fire! (sel1 "input[type=submit]") :click)))
   )
+
+(ji.reader/register-tag-parsers!)
