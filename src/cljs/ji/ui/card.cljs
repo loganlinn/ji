@@ -4,6 +4,7 @@
     [dommy.macros :refer [sel1 deftemplate]]))
 
 ;; TODO obfuscation!
+(def ^:dynamic card-key nil)
 
 (def dict {:solid "f" :striped "s" :outlined "e"
            :oval "o" :squiggle "s" :diamond "d"

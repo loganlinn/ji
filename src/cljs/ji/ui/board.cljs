@@ -32,9 +32,7 @@
 (deftemplate board-tmpl []
   [:div.board.row.collapse
    [:div.large-12.columns
-    [:ul.cards]]
-   [:div.large-12.columns
-    [:span.cards-remaining]]])
+    [:ul.cards]]])
 
 (defn bind-card!
   [card-sel {:keys [el card] :as data}]

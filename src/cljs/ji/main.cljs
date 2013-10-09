@@ -47,10 +47,10 @@
 
 (deftemplate game-tmpl []
   [:div.row.collapse
-   [:div.large-3.small-2.columns
+   [:div#sidebar.large-3.small-2.columns
     [:div#game-status]
     [:div#players]]
-   [:div.large-9.small-10.columns
+   [:div#main.large-9.small-10.columns
     [:div#board]]])
 
 (defn show-alert!
@@ -115,7 +115,7 @@
     (>! player-state (select-keys game [:players :sets]))
     (>! status-state (select-keys game [:cards-remaining :sets]))
 
-    (render-solutions! (solve-board (:board game))) ;; removeme cheater
+    ;(render-solutions! (solve-board (:board game))) ;; removeme cheater
 
     game))
 
@@ -194,6 +194,15 @@
           (<! (go-game container (:in server) (:out server) player-id)))
         (msg/error "Unable to join")))))
 
+(defn auto-join! []
+  (let [dict "abcdefghijklmnopqrstuvwxyz"
+        dict "lj"
+        username (apply str (for [x (range 3)] (rand-nth dict)))]
+    (go (<! (timeout 50))
+        (dom/set-value! (sel1 "input[name='player-id']") username)
+        (<! (timeout 12))
+
+        (dom/fire! (sel1 "input[type=submit]") :click))))
 (defn ^:export init []
   (let [container (sel1 :#game)
         join-submit (chan)
@@ -212,14 +221,15 @@
           (let [result (<! result-chan)]
             (if (msg/error? result)
               (show-alert! (:message result) :alert))))))
-
-  (let [dict "abcdefghijklmnopqrstuvwxyz"
-        dict "lj"
-        username (apply str (for [x (range 3)] (rand-nth dict)))]
-    (go (<! (timeout 50))
-        (dom/set-value! (sel1 "input[name='player-id']") username)
-        (<! (timeout 12))
-        (dom/fire! (sel1 "input[type=submit]") :click)))
+  (auto-join!)
   )
 
+
 (ji.reader/register-tag-parsers!)
+
+;; Janky height
+(defn set-content-height []
+  (dom/set-px! (sel1 :#content)
+               :height (- (.-innerHeight js/window) 45)))
+(js/$ set-content-height)
+(.resize (js/$ js/window) set-content-height)
