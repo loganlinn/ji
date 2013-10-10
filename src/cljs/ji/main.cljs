@@ -25,7 +25,7 @@
     [cljs.core.match.macros :refer [match]]
     [ji.util.macros :refer [go-loop]]))
 
-(def heartbeat-interval 5000)
+(def heartbeat-interval 7500)
 (def heartbeat-req :ping)
 (def heartbeat-resp :pong)
 
