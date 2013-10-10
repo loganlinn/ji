@@ -150,6 +150,12 @@ ul.players {
   @include panel($secondary-color);
   height: 100%;
 
+  .board-5 {
+    .cards {
+      @include card-rows(5);
+    }
+  }
+
   .cards {
     $each-height: ($card-height + 15px);
     $cols: 3;
@@ -163,16 +169,14 @@ ul.players {
 
     @include card-rows(4);
 
-    &.rows-5 {
-      @include card-rows(5);
-    }
-
     .card-target {
       display:block;
     }
+
     .selected {
       background-color: $selected-color;
     }
+
     .new a {
       background-color: lighten($secondary-color, 10%);
     }

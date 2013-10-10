@@ -89,7 +89,7 @@
   [sets]
   (let [el (node [:div.panel [:h2 "Hints"]])]
     (if-let [x (sel1 :#solution)] (dom/remove! x))
-    (dom/append! (sel1 :#board)
+    (dom/append! (sel1 :#sidebar-left)
                  (node [:div#solution.row.collapse el]))
     (doseq [s sets]
       (dom/append! el (card-ui/set-tmpl s)))))

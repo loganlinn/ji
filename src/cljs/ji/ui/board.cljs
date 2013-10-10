@@ -113,6 +113,7 @@
   (go
     (loop [board-data []
            num-sets 0]
+      (dom/toggle-class! board-el "board-5" (> (count board-data) 12))
       (match (<! board-state)
         nil
         board-data
