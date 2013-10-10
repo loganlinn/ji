@@ -26,6 +26,8 @@
 
 ;;
 
+(def transition-duration 500) ;; ms, defined in app.scss
+
 (defn card-selector [card] (str ".card[data-card-id='" (card/card-id card) "']"))
 (defn player-selector [player-id] (str "[data-player-id='" player-id "']"))
 
@@ -77,17 +79,15 @@
       others)
     board-data))
 
-(letfn [(on-card-click [e]
+(letfn [(click-handler [e]
           (.preventDefault e)
           (-> (.-target e)
               (dom/closest :.card-target)
               (dom/toggle-class! "selected")))]
   (defn listen-cards! [board-el]
-    (dom/listen! [board-el :a] :click on-card-click))
+    (dom/listen! [board-el :a] :click click-handler))
   (defn unlisten-cards! [board-el]
-    (dom/unlisten! [board-el :a] :click on-card-click)))
-
-(def transition-duration 500) ;; ms, defined in app.scss
+    (dom/unlisten! [board-el :a] :click click-handler)))
 
 (defn transition-set! ;; TODO pass container
   "Returns updated board-data after removing the cards assocated with the set
