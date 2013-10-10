@@ -63,6 +63,10 @@ $card-width: 73px;
   margin-bottom: 0px;
 }
 
+#sidebar-left {
+  overflow: auto;
+}
+
 #content {
   position: relative;
   .row, .columns {

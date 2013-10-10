@@ -47,7 +47,7 @@
 
 (deftemplate game-tmpl []
   [:div.row.collapse
-   [:div#sidebar.large-3.small-2.columns
+   [:div#sidebar-left.large-3.small-2.columns
     [:div#game-status]
     [:div#players]]
    [:div#main.large-9.small-10.columns
