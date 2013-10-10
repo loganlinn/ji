@@ -117,6 +117,31 @@ ul.players {
   @include panel($secondary-color, 5px, true);
 }
 
+@mixin card-rows($rows, $cols:3) {
+  li {
+    height: 100% / $rows;
+  }
+
+  .card-target {
+    margin-top: 10%;
+  }
+
+  .card {
+    display: block;
+    height: 100%;
+
+    img {
+      height: 80%;
+    }
+  }
+
+  @for $i from 1 through ($rows - 1) {
+    li:nth-child(n+#{$i * $cols + 1}) {
+      top: ($i * 100%) / $rows;
+    }
+  }
+}
+
 #board {
   @include panel($secondary-color);
   height: 100%;
@@ -132,6 +157,12 @@ ul.players {
     position: relative;
     list-style: none;
 
+    @include card-rows(4);
+
+    &.rows-5 {
+      @include card-rows(5);
+    }
+
     .card-target {
       display:block;
     }
@@ -146,7 +177,6 @@ ul.players {
       position: absolute;
       top: 0;
       width: 100% / $cols;
-      height: 100% / $rows;
       transition: all $animate-duration linear;
       text-align: center;
       padding: 0;
@@ -155,24 +185,6 @@ ul.players {
     @for $i from 1 through $cols {
       li:nth-child(#{$cols}n+#{$i}) {
         left: (($i - 1) * 100%) / $cols;
-      }
-    }
-
-    @for $i from 1 through ($rows - 1) {
-      li:nth-child(n+#{$i * $cols + 1}) {
-        top: ($i * 100%) / $rows;
-      }
-    }
-
-    &.rows-5 {
-      $rows: 5;
-      li {
-        height: 100% / $rows;
-      }
-      @for $i from 1 through ($rows - 1) {
-        li:nth-child(n+#{$i * $cols + 1}) {
-          top: ($i * 100%) / $rows;
-        }
       }
     }
   }
