@@ -21,8 +21,14 @@
 (defn separate [f coll] [(filter f coll) (filter (complement f) coll)])
 
 (defn bounding-client-rect-diff
+  "Implementation detail: merge-with fails on Safari"
   [a b]
-  (merge-with - (dom/bounding-client-rect a) (dom/bounding-client-rect b)))
+  {:left (- (:left a) (:left b))
+   :right (- (:right a) (:right b))
+   :top (- (:top a) (:top b))
+   :bottom (- (:bottom a) (:bottom b))
+   :width (- (:width a) (:width b))
+   :height (- (:height a) (:height b))})
 
 ;;
 
