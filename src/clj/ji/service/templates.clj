@@ -49,7 +49,7 @@
             [:ul.left
              [:li.divider]
              [:li [:a {:href "/games"} "Lobby"]]]]]
-          [:div#messages.large-12.columns]
+          [:section#messages.large-12.columns]
           [:div#content.large-12.columns
            ~@(:content blocks)]
           (page/include-js "/js/vendor/jquery-2.0.3.min.js" "/js/foundation.min.js") ;; TODO include foundation components individually
@@ -66,7 +66,7 @@
 
 (defpage game [game-env]
   (defblock content
-    [:div#game.row.collapse {:data-game-id (:id game-env)}])
+    [:div#game {:data-game-id (:id game-env)}])
   (defblock body-end
     (page/include-js "/js/main.js")
     [:script "$(ji.main.init);"]))

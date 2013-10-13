@@ -47,10 +47,12 @@
 
 (deftemplate game-tmpl []
   [:div.row.collapse
-   [:div#sidebar-left.large-3.small-2.columns
+   [:section#sidebar-left.large-3.small-2.columns
+    {:role "complementary"}
     [:div#game-status]
     [:div#players]]
-   [:div#main.large-9.small-10.columns
+   [:section#main.large-9.small-10.columns
+    {:role "main"}
     [:div#board]]])
 
 (defn show-alert!
