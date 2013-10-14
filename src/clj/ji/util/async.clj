@@ -1,7 +1,6 @@
 (ns ji.util.async
   (:require [clojure.core.async :as async
-             :refer [<! >! <!! >!! timeout chan alt! alts!! go close!]]
-            [ji.util.macros :refer [go-loop]]))
+             :refer [<! >! <!! >!! timeout chan alt! alts!! go close!]]))
 
 (defn map-source
   ([f source] (map-source (chan) f source))

@@ -10,8 +10,7 @@
             [ji.ui.players :as players-ui]
             [ji.ui.status :as status-ui]
             [ji.websocket :as websocket]
-            [ji.util.helpers
-             :refer [clear! event-chan map-source map-sink copy-chan into-chan]]
+            [ji.util.helpers :refer [clear! event-chan]]
             [clojure.set :as s]
             [clojure.string :as str]
             [cljs.core.async :as async
@@ -22,8 +21,7 @@
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :refer [go alt!]]
-    [cljs.core.match.macros :refer [match]]
-    [ji.util.macros :refer [go-loop]]))
+    [cljs.core.match.macros :refer [match]]))
 
 (def heartbeat-interval 7500)
 (def heartbeat-req :ping)
@@ -110,14 +108,11 @@
 (defn go-game-state
   "Distributes new game state to UI components"
   [game board-state player-state status-state]
-  (go
-    (>! board-state (select-keys game [:board :sets]))
-    (>! player-state (select-keys game [:players :sets]))
-    (>! status-state (select-keys game [:cards-remaining :sets]))
-
-    ;(render-solutions! (solve-board (:board game))) ;; removeme cheater
-
-    game))
+  (put! board-state (select-keys game [:board :sets]))
+  (put! player-state (select-keys game [:players :sets]))
+  (put! status-state (select-keys game [:cards-remaining :sets]))
+  (render-solutions! (solve-board (:board game))) ;; removeme cheater
+  )
 
 (defn go-emit-heartbeat
   "A go loop to regularly write heartbeat message on channel"
@@ -167,7 +162,7 @@
 
               (instance? msg/GameStateMessage msg)
               (do (go-game-state (:game msg) board-state player-state status-state)
-                  (recur))
+                (recur))
 
               (instance? msg/GameFinishMessage msg)
               (let [{:keys [game]} msg]
@@ -201,8 +196,8 @@
     (go (<! (timeout 50))
         (dom/set-value! (sel1 "input[name='player-id']") username)
         (<! (timeout 12))
-
         (dom/fire! (sel1 "input[type=submit]") :click))))
+
 (defn ^:export init []
   (let [container (sel1 :#game)
         join-submit (chan)

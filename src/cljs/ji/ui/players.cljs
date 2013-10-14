@@ -4,8 +4,7 @@
             [ji.domain.game :as game :refer [player-offline?]]
             [ji.domain.messages :as msg]
             [ji.ui.card :as card]
-            [ji.util.helpers
-             :refer [event-chan map-source map-sink copy-chan into-chan]]
+            [ji.util.helpers :refer [event-chan]]
             [clojure.set :as s]
             [clojure.string :as str]
             [cljs.core.async :as async
@@ -15,8 +14,7 @@
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :refer [go alt!]]
-    [cljs.core.match.macros :refer [match]]
-    [ji.util.macros :refer [go-loop]]))
+    [cljs.core.match.macros :refer [match]]))
 
 (defn player-order
   "Orders the players"

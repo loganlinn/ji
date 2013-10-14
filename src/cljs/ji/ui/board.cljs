@@ -5,8 +5,7 @@
              :refer [new-deck solve-board is-set?]]
             [ji.domain.messages :as msg]
             [ji.ui.card :as card]
-            [ji.util.helpers
-             :refer [event-chan map-source map-sink copy-chan into-chan]]
+            [ji.util.helpers :refer [event-chan]]
             [clojure.set :as s]
             [cljs.core.async :as async
              :refer [<! >! chan close! put! timeout]]
@@ -14,9 +13,8 @@
             [dommy.core :as dom])
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
-    [cljs.core.async.macros :refer [go alt!]]
-    [cljs.core.match.macros :refer [match]]
-    [ji.util.macros :refer [go-loop]]))
+    [cljs.core.async.macros :refer [go go-loop alt!]]
+    [cljs.core.match.macros :refer [match]]))
 
 (defn separate [f coll] [(filter f coll) (filter (complement f) coll)])
 
@@ -116,37 +114,36 @@
 
 (defn go-board-ui
   [board-el board-state card-sel]
-  (go
-    (loop [board-data []
-           num-sets 0]
-      (dom/toggle-class! board-el "board-5" (> (count board-data) 12))
-      (match (<! board-state)
-        nil
-        board-data
+  (go-loop [board-data []
+            num-sets 0]
+    (dom/toggle-class! board-el "board-5" (> (count board-data) 12))
+    (match (<! board-state)
+      nil
+      board-data
 
-        :disable
-        (do (unlisten-cards! board-el)
-            (recur (doall (map unbind-card! board-data))
-                   num-sets))
+      :disable
+      (do (unlisten-cards! board-el)
+          (recur (doall (map unbind-card! board-data))
+                 num-sets))
 
-        :enable
-        (do (listen-cards! board-el)
-            (recur (doall (map #(bind-card! card-sel %) board-data))
-                   num-sets))
+      :enable
+      (do (listen-cards! board-el)
+          (recur (doall (map #(bind-card! card-sel %) board-data))
+                 num-sets))
 
-        {:board board :sets sets}
-        (let [old-board (set (map :card board-data))
-              -cards (s/difference old-board board)
-              +cards (s/difference board old-board)
-              new-sets (->> (drop num-sets sets)
-                            (filter #(s/subset? (:cards %) old-board)))]
-          (recur (-> board-data
-                     (transition-sets! new-sets)
-                     (remove-cards! -cards)
-                     (add-cards! board-el card-sel +cards))
-                 (count sets)))
-        :else
-        (recur board-data num-sets)))))
+      {:board board :sets sets}
+      (let [old-board (set (map :card board-data))
+            -cards (s/difference old-board board)
+            +cards (s/difference board old-board)
+            new-sets (->> (drop num-sets sets)
+                          (filter #(s/subset? (:cards %) old-board)))]
+        (recur (-> board-data
+                   (transition-sets! new-sets)
+                   (remove-cards! -cards)
+                   (add-cards! board-el card-sel +cards))
+               (count sets)))
+      :else
+      (recur board-data num-sets))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

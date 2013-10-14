@@ -1,7 +1,7 @@
 (ns ji.websocket
   (:require [cljs.reader :refer [read-string]]
             [cljs.core.async :as async :refer [<! >! chan close! put! take! sliding-buffer dropping-buffer timeout]])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defn connect!
   "Connects to a websocket. Returns a channel that, when connected, puts a
@@ -20,13 +20,13 @@
          (aset "onopen"
                (fn []
                  (close! on-connect)
-                 (go (loop []
-                       (let [data (<! in)]
-                         (if-not (nil? data)
-                           (do (.send ws (pr-str data))
-                               (recur))
-                           (do (close! out)
-                               (.close ws))))))))
+                 (go-loop []
+                   (let [data (<! in)]
+                     (if-not (nil? data)
+                       (do (.send ws (pr-str data))
+                           (recur))
+                       (do (close! out)
+                           (.close ws)))))))
          (aset "onmessage"
                (fn [m]
                  (when-let [data (read-string (.-data m))]
