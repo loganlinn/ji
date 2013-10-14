@@ -10,7 +10,7 @@
             [ji.ui.players :as players-ui]
             [ji.ui.status :as status-ui]
             [ji.websocket :as websocket]
-            [ji.util.helpers :refer [clear! event-chan]]
+            [ji.util.helpers :refer [event-chan]]
             [clojure.set :as s]
             [clojure.string :as str]
             [cljs.core.async :as async
@@ -212,7 +212,7 @@
                             (dom/value) (str/trim))
               container (dom/replace-contents! container (game-tmpl))
               result-chan (run-game! container game-id player-id)]
-          (clear! (sel1 :#messages))
+          (dom/clear! (sel1 :#messages))
           (let [result (<! result-chan)]
             (if (msg/error? result)
               (show-alert! (:message result) :alert))))))
