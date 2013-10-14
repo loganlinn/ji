@@ -1,6 +1,6 @@
 (ns ji.websocket
   (:require [cljs.reader :refer [read-string]]
-            [cljs.core.async :as async :refer [<! >! chan close! put! take! sliding-buffer dropping-buffer timeout]])
+            [cljs.core.async :as async :refer [<! >! chan close! put!]])
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (defn connect!
