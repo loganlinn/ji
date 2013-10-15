@@ -20,7 +20,7 @@
             [dommy.template :refer [html->nodes]])
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
-    [cljs.core.async.macros :refer [go alt!]]
+    [cljs.core.async.macros :refer [go go-loop alt!]]
     [cljs.core.match.macros :refer [match]]))
 
 (def heartbeat-interval 7500)
@@ -64,24 +64,24 @@
   "todo: general partition/chunking buffer"
   ([card-chan] (card-selector (chan) card-chan))
   ([c card-chan]
-   (go (loop [cs #{}]
-         (if (>= (count cs) 3)
-           (do (>! c cs) (recur #{}))
-           (let [v (<! card-chan)]
-             (cond
-               (nil? v) (close! c)
-               (cs v) (recur (disj cs v))
-               :else (recur (conj cs v)))))))
+   (go-loop [cs #{}]
+     (if (>= (count cs) 3)
+       (do (>! c cs) (recur #{}))
+       (let [v (<! card-chan)]
+         (cond
+           (nil? v) (close! c)
+           (cs v) (recur (disj cs v))
+           :else (recur (conj cs v))))))
    c))
 
 (defn go-emit-selections [out card-sel]
   (let [sels (card-selector card-sel)]
-    (go (loop []
-          (when-let [cards (<! sels)]
-            (>! out (msg/->PlayerSetMessage cards))
-            (doseq [el (sel [:#board :.selected])]
-              (dom/remove-class! el "selected"))
-            (recur))))))
+    (go-loop []
+      (when-let [cards (<! sels)]
+        (>! out (msg/->PlayerSetMessage cards))
+        (doseq [el (sel [:#board :.selected])]
+          (dom/remove-class! el "selected"))
+        (recur)))))
 
 (defn render-solutions!
   [sets]
@@ -117,12 +117,12 @@
 (defn go-emit-heartbeat
   "A go loop to regularly write heartbeat message on channel"
   [control out interval]
-  (go (loop []
-        (let [tick (timeout interval)]
-          (match (alts! [control tick])
-            [nil control] nil
-            [_ tick] (do (>! out heartbeat-req)
-                         (recur)))))))
+  (go-loop []
+    (let [tick (timeout interval)]
+      (match (alts! [control tick])
+        [nil control] nil
+        [_ tick] (do (>! out heartbeat-req)
+                     (recur))))))
 
 (defn go-game [container in out player-id]
   (let [control (chan) ;; TODO integrate further
@@ -144,37 +144,37 @@
                        (sel1 container :#game-status))
 
     ;; main game loop
-    (go (loop []
-          (let [msg (<! in)]
-            (cond
-              (nil? msg)
-              (do
-                (close! control)
-                (close! card-sel)
-                (close! board-state)
-                (close! player-state)
-                (close! status-state)
-                (dom/set-html! container "")
-                (msg/error "Disconnected from server"))
+    (go-loop []
+      (let [msg (<! in)]
+        (cond
+          (nil? msg)
+          (do
+            (close! control)
+            (close! card-sel)
+            (close! board-state)
+            (close! player-state)
+            (close! status-state)
+            (dom/set-html! container "")
+            (msg/error "Disconnected from server"))
 
-              (= msg heartbeat-resp)
-              (do (recur))
+          (= msg heartbeat-resp)
+          (do (recur))
 
-              (instance? msg/GameStateMessage msg)
-              (do (go-game-state (:game msg) board-state player-state status-state)
-                (recur))
+          (instance? msg/GameStateMessage msg)
+          (do (go-game-state (:game msg) board-state player-state status-state)
+              (recur))
 
-              (instance? msg/GameFinishMessage msg)
-              (let [{:keys [game]} msg]
-                (>! board-state :disable)
-                (<! (go-game-summary container msg))
-                (close! board-state)
-                (close! player-state)
-                msg)
+          (instance? msg/GameFinishMessage msg)
+          (let [{:keys [game]} msg]
+            (>! board-state :disable)
+            (<! (go-game-summary container msg))
+            (close! board-state)
+            (close! player-state)
+            msg)
 
-              :else
-              (do (println "UNHANDLED MSG" msg)
-                  (recur))))))))
+          :else
+          (do (println "UNHANDLED MSG" msg)
+              (recur)))))))
 
 (defn run-game!
   [container game-id player-id]
