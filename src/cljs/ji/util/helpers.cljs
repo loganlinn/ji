@@ -14,12 +14,11 @@
 ;; =============================================================================
 ;; Printing
 
-(defn js-print [& args]
-  (if (js* "typeof console != 'undefined'")
-    (.log js/console (apply str args))
-    (js/print (apply str args))))
-
-(set! *print-fn* js-print)
+(set-print-fn!
+  (fn [& args]
+    (if (js* "typeof console != 'undefined'")
+      (.log js/console (apply str args))
+      (js/print (apply str args)))))
 
 ;; =============================================================================
 ;; Pattern matching support
