@@ -24,6 +24,7 @@
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.classpath "0.2.0"]
                                   [midje "1.5.1"]]
+                   :plugins [[com.cemerick/austin "0.1.1"]]
                    :env {:prod false}}
              :prod {:env {:prod true}}}
 
