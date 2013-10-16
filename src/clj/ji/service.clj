@@ -7,15 +7,18 @@
             [ji.util.async :refer [map-source]]
             [taoensso.timbre :refer [debugf info]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
-            [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close!]]
+            [clojure.core.async :refer [chan go go-loop <! >! <!! >!! alt! alts! put! close!]]
             [clojure.core.match :refer [match]]
             [hiccup.core :refer [html]]
             [hiccup.page :as page]
             [ring.middleware.params :refer [wrap-params]]
             [ring.util.response :as resp]
             [compojure.core :refer [routes GET POST]]
-            [compojure.route :as route])
+            [compojure.route :as route]
+            [environ.core :refer [env]])
   (:import [ji.domain.messages GameJoinMessage PlayerSetMessage]))
+
+(def max-clients (env :max-clients 128))
 
 (defn broadcast-msg!
   [msg clients]
@@ -116,16 +119,24 @@
           (>! out (msg/->ErrorMessage "You're strange"))
           (close! out))))))
 
+(defn num-clients [game-envs]
+  (apply + (map #(-> % val deref :clients count) @game-envs)))
+
+(defn accepting-clients? [game-envs]
+  (< (num-clients game-envs) max-clients))
+
 (defn register-ws-app!
   [game-envs client-chan]
-  (go (loop []
-        (when-let [{:keys [request] :as c} (<! client-chan)]
-          (if-let [game-id (second (re-find #"^/games/([\w-]+)" (:uri request)))]
-            (if-let [game-env (@game-envs game-id)]
-              (client-join! game-env (client/create-client c))
-              (close! (:out c)))
-            (close! (:out c)))
-          (recur)))))
+  (go-loop []
+    (when-let [client (client/create-client (<! client-chan))]
+      (if-not (accepting-clients? game-envs)
+        (client/disconnect-client! client (msg/error "Service temporarily unavailable"))
+        (if-let [game-id (second (re-find #"^/games/([\w-]+)" (-> client :request :uri)))]
+          (if-let [game-env (@game-envs game-id)]
+            (client-join! game-env client)
+            (client/disconnect-client! client (msg/error "Unknown game")))
+          (client/disconnect-client! client (msg/error "Invalid game id"))))
+      (recur))))
 
 (defn create-app [game-envs]
   (-> (routes

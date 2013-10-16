@@ -1,7 +1,7 @@
 (ns ji.service.client
   (:require [ji.domain.messages :as msg]
             [clojure.edn :as edn]
-            [clojure.core.async :refer [chan go <! >! <!! >!! alt! alts! put! close! timeout]]
+            [clojure.core.async :refer [close! map> map< put!]]
             [ji.util.async :refer [map-source map-sink]]))
 
 (def data-readers
@@ -18,6 +18,13 @@
 (defn create-client
   "Reverse the in/out for our sanity, and communicate via edn"
   [{:keys [in out] :as client}]
-  (assoc client
-         :in (map-source client-read-string out)
-         :out (map-sink pr-str in)))
+  (when client
+    (assoc client
+           :in (map< client-read-string out)
+           :out (map> pr-str in))))
+
+(defn disconnect-client!
+  ([c msg]
+   (put! (:out c) msg #(close! (:out c))))
+  ([c]
+   (close! (:out c))))
