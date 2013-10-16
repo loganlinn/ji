@@ -4,10 +4,9 @@
             [ji.service.client :as client]
             [ji.domain.game :as game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
-            [ji.util.async :refer [map-source]]
             [taoensso.timbre :refer [debugf info]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
-            [clojure.core.async :refer [chan go go-loop <! >! <!! >!! alt! alts! put! close!]]
+            [clojure.core.async :refer [chan go go-loop <! >! <!! >!! alt! alts! put! close! map> map<]]
             [clojure.core.match :refer [match]]
             [hiccup.core :refer [html]]
             [hiccup.page :as page]
@@ -108,7 +107,7 @@
         (if-not (game-env/max-clients? @game-env)
           (let [player-id (:player-id join-msg)
                 assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
-                player-in (map-source assoc-player-id in)
+                player-in (map< assoc-player-id in)
                 client (assoc client :in player-in :player-id player-id)
                 join-msg (assoc join-msg :client client)]
             (>! (:join-chan @game-env) join-msg))

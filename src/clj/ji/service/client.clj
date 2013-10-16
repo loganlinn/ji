@@ -1,8 +1,7 @@
 (ns ji.service.client
   (:require [ji.domain.messages :as msg]
             [clojure.edn :as edn]
-            [clojure.core.async :refer [close! map> map< put!]]
-            [ji.util.async :refer [map-source map-sink]]))
+            [clojure.core.async :refer [close! map> map< put!]]))
 
 (def data-readers
   {'ji.domain.messages.ErrorMessage #'msg/map->ErrorMessage
