@@ -18,12 +18,16 @@
 (deftemplate status-tmpl [last-set cards-remaining]
   [:div.row.collapse
    [:div.cards-remaining.columns
-    [:h5.subheader
-     "Cards Remaining: " [:span (or cards-remaining "?")]]]
-   [:div.last-set.columns
-    [:h5.subheader "Last Set: " (if last-set [:span (:player-id last-set)] "?")]
-    [:div.row.collapse
-     [:div.large-6.large-centered.columns (card/set-tmpl (:cards last-set))]]] ])
+    [:h5.subheader.hide-for-small
+     "Cards Remaining: " [:span (or cards-remaining "?")]]
+    [:h5.subheader.show-for-small
+     [:small "Cards Remaining: " [:span (or cards-remaining "?")]]]]
+   (if last-set
+     [:div.last-set.columns
+      [:h5.subheader.hide-for-small "Last Set: " [:span (:player-id last-set)]]
+      [:h5.subheader.show-for-small [:small "Last Set: " [:span (:player-id last-set)]]]
+      [:div.row.collapse
+       [:div.large-6.large-centered.columns (card/set-tmpl (:cards last-set))]]]) ])
 
 (defn go-status-ui [container ch]
   (go (loop []
