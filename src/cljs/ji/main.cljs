@@ -85,12 +85,14 @@
 
 (defn render-solutions!
   [sets]
-  (let [el (node [:div.panel [:h2 "Hints"]])]
-    (if-let [x (sel1 :#solution)] (dom/remove! x))
+  (some-> (sel1 :#solution) (dom/remove!))
+  (let [ul (node [:ul#solution-sets.f-dropdown.content {:data-dropdown-content true}])]
     (dom/append! (sel1 :#sidebar-left)
-                 (node [:div#solution.row.collapse el]))
+                 (node [:div#solution
+                        [:a.button {:href "#" :data-dropdown "solution-sets"} "Hints"]
+                        ul]))
     (doseq [s sets]
-      (dom/append! el (card-ui/set-tmpl s)))))
+      (dom/append! ul (node [:li (card-ui/set-tmpl s)])))))
 
 (defn go-game-summary [container {:keys [game] :as finish-msg}]
   (go (let [modal (node [:div.reveal-modal.open
