@@ -1,4 +1,5 @@
 (ns ji.ui.players
+  "UI component for displaying game players"
   (:require [ji.ui :as ui]
             [ji.domain.player :as p]
             [ji.domain.game :as game :refer [player-offline?]]

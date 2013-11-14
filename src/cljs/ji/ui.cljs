@@ -10,5 +10,6 @@
 
 (defn run-component! [component container]
   (let [run-chan (attach! component container)]
-    (go (destroy! component container (<! run-chan)))
-    ))
+    (go
+      (let [exit-msg (<! run-chan)]
+        (destroy! component container exit-msg)))))
