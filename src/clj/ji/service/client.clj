@@ -8,7 +8,6 @@
    'ji.domain.messages.GameJoinMessage #'msg/map->GameJoinMessage
    'ji.domain.messages.GameLeaveMessage #'msg/map->GameLeaveMessage
    'ji.domain.message.GameStateMessage #'msg/map->GameStateMessage
-   'ji.domain.messages.GameControlMessage #'msg/map->GameControlMessage
    'ji.domain.messages.PlayerSetMessage #'msg/map->PlayerSetMessage})
 
 (defn client-read-string [data]

@@ -38,42 +38,42 @@
 (defn go-game
   ;; TODO move to ji.service.game
   [game-env]
-  (go (loop []
-        (let [{:keys [game clients join-chan]} @game-env]
-          (if (game-over? game)
-            (finish-game! @game-env)
-            (let [[msg sc] (alts! (cons join-chan (map :in clients)))
-                  msg-client (some #(when (= (:in %) sc) %) clients)]
-              (match [msg sc]
-                [nil join-chan] (finish-game! @game-env)
+  (go-loop []
+    (let [{:keys [game clients join-chan]} @game-env]
+      (if (game-over? game)
+        (finish-game! @game-env)
+        (let [[msg sc] (alts! (cons join-chan (map :in clients)))
+              msg-client (some #(when (= (:in %) sc) %) clients)]
+          (match [msg sc]
+            [nil join-chan] (finish-game! @game-env)
 
-                ;; Player Join
-                [msg join-chan]
-                (let [{:keys [client player-id]} msg]
-                  (broadcast-game-env!
-                    (swap! game-env game-env/connect-client client player-id))
-                  (recur))
+            ;; Player Join
+            [msg join-chan]
+            (let [{:keys [client player-id]} msg]
+              (broadcast-game-env!
+                (swap! game-env game-env/connect-client client player-id))
+              (recur))
 
-                ;; Player Disconnect
-                [nil sc]
-                (do (broadcast-game-env!
-                      (swap! game-env game-env/disconnect-client sc))
-                    (recur))
+            ;; Player Disconnect
+            [nil sc]
+            (do (broadcast-game-env!
+                  (swap! game-env game-env/disconnect-client sc))
+                (recur))
 
-                ;; Heartbeat
-                [:ping sc]
-                (do
-                  (put! (:out msg-client) :pong)
-                  (recur))
+            ;; Heartbeat
+            [:ping sc]
+            (do
+              (put! (:out msg-client) :pong)
+              (recur))
 
-                ;; Game Message
-                [(msg :guard game-env/game-msg?) sc]
-                (do (broadcast-game-env!
-                      (swap! game-env game-env/apply-game-message msg))
-                    (recur))
+            ;; Game Message
+            [(msg :guard game-env/game-msg?) sc]
+            (do (broadcast-game-env!
+                  (swap! game-env game-env/apply-game-message msg))
+                (recur))
 
-                ;; Unknown Input
-                :else (recur))))))))
+            ;; Unknown Input
+            :else (recur)))))))
 
 (defn init-game-env!
   [game-envs game-id]
