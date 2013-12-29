@@ -18,32 +18,9 @@
   (let [m (group-by #(= (:in %) client-in) clients)]
     [(first (m true)) (m false)]))
 
-(defn fill-board
-  "Returns game after filling board to 12 cards"
-  ([game] (fill-board game game/default-board-size))
-  ([{:keys [board deck] :as game} board-size]
-   (let [num-add (min (- board-size (count board)) (count deck))]
-     (if (pos? num-add)
-       (game/draw-cards num-add game)
-       game))))
-
-(defn fix-setless-board
-  "If game's board contains sets, returns game as-is, otherwise, adds 3 cards
-  until at least 1 set exists on board"
-  [game]
-  (loop [game game]
-    (if (and (seq (:deck game))
-             (empty? (game/solve-board (:board game))))
-      (recur (game/draw-cards 3 game))
-      game)))
-
-(defn step-game
-  [game]
-  (-> game (fill-board) (fix-setless-board)))
-
 (defn step-game-env
   [game-env]
-  (update-in game-env [:game] step-game))
+  (update-in game-env [:game] game/update-board))
 
 (defn connect-client
   [game-env client player-id]

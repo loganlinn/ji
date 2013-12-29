@@ -98,7 +98,7 @@
   (println "REVOKE SET" player-id)
   (update-player game player-id p/revoke-set))
 
-(defn draw-cards [n {:keys [deck board] :as game}]
+(defn draw-cards [{:keys [deck board] :as game} n]
   (assoc game
          :deck (drop n deck)
          :board (into board (take n deck))))
@@ -111,3 +111,28 @@
   (->> (:sets game)
        (filter #(= player-id (:player-id %)))
        (map :cards)))
+
+(defn fill-board
+  "Returns game after filling board to 12 cards"
+  ([game] (fill-board game default-board-size))
+  ([{:keys [board deck] :as game} board-size]
+   (let [num-add (min (- board-size (count board)) (count deck))]
+     (if (pos? num-add)
+       (draw-cards game num-add)
+       game))))
+
+(defn fix-setless-board
+  "If game's board contains sets, returns game as-is, otherwise, adds 3 cards
+  until at least 1 set exists on board"
+  [game]
+  (loop [game game]
+    (if (and (seq (:deck game))
+             (empty? (solve-board (:board game))))
+      (recur (draw-cards game 3))
+      game)))
+
+(defn update-board
+  "Deals cards to game board, presumably after a player finds a set, returning
+  updated game state"
+  [game]
+  (-> game (fill-board) (fix-setless-board)))
