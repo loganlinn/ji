@@ -1,8 +1,10 @@
 (ns ji.service
-  (:require [ji.service.templates :as tmpl]
-            [ji.service.game-env :as game-env]
-            [ji.service.client :as client]
-            [ji.domain.game :as game :refer [new-game game-over?]]
+  (:require [ji.service
+             [templates :as tmpl]
+             [game-env :as game-env]
+             [client :as client]
+             [game :as game]]
+            [ji.domain.game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
             [taoensso.timbre :refer [debugf info]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
@@ -19,68 +21,12 @@
 
 (def max-clients (env :max-clients 128))
 
-(defn broadcast-msg!
-  [msg clients]
-  (doseq [{c :out} clients]
-    (put! c msg)))
-
-(defn broadcast-game-env!
-  [{:keys [game clients] :as game-env}]
-  (when (seq clients)
-    (broadcast-msg! (msg/game-state :game game) clients)))
-
-(defn- finish-game!
-  [{:keys [game clients] :as game-env}]
-  (broadcast-msg! (msg/map->GameFinishMessage {:game game}) clients)
-  ;(doseq [client clients] (close! (:out client)))
-  game-env)
-
-(defn go-game
-  ;; TODO move to ji.service.game
-  [game-env]
-  (go-loop []
-    (let [{:keys [game clients join-chan]} @game-env]
-      (if (game-over? game)
-        (finish-game! @game-env)
-        (let [[msg sc] (alts! (cons join-chan (map :in clients)))
-              msg-client (some #(when (= (:in %) sc) %) clients)]
-          (match [msg sc]
-            [nil join-chan] (finish-game! @game-env)
-
-            ;; Player Join
-            [msg join-chan]
-            (let [{:keys [client player-id]} msg]
-              (broadcast-game-env!
-                (swap! game-env game-env/connect-client client player-id))
-              (recur))
-
-            ;; Player Disconnect
-            [nil sc]
-            (do (broadcast-game-env!
-                  (swap! game-env game-env/disconnect-client sc))
-                (recur))
-
-            ;; Heartbeat
-            [:ping sc]
-            (do
-              (put! (:out msg-client) :pong)
-              (recur))
-
-            ;; Game Message
-            [(msg :guard game-env/game-msg?) sc]
-            (do (broadcast-game-env!
-                  (swap! game-env game-env/apply-game-message msg))
-                (recur))
-
-            ;; Unknown Input
-            :else (recur)))))))
-
 (defn init-game-env!
   [game-envs game-id]
   (let [game (new-game)
         join-chan (chan)
         game-env (atom (game-env/create-game-env game-id game join-chan))
-        game-chan (go-game game-env)]
+        game-chan (game/go-game game-env)]
     (swap! game-envs assoc game-id game-env)
     (go (let [finshed-game (<! game-chan)]
           (println "Game finished" finshed-game)

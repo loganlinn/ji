@@ -1,8 +1,7 @@
 (ns ji.service.game-env
   (:require [ji.domain.game :as game]
             [ji.domain.messages :as msg]
-            [ji.util :as util :refer [now]])
-  (:import [ji.domain.messages PlayerSetMessage]))
+            [ji.util :as util :refer [now]]))
 
 (def default-max-clients 9)
 
@@ -12,15 +11,6 @@
   (apply-message [_ game-env]))
 
 (defn game-msg? [m] (satisfies? IGameMessage m))
-
-;; TODO move to ji.service.game
-(extend-protocol IGameMessage
-  PlayerSetMessage
-  (apply-message [{:keys [cards player-id]} {:keys [game clients] :as game-env}]
-    (assoc game-env
-           :game (if (game/valid-set? game cards)
-                   (game/take-set game player-id cards)
-                   (game/revoke-set game player-id)))))
 
 (defn- separate-client
   "Returns [client other-clients] by identifying client by input channel"
