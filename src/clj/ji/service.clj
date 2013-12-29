@@ -21,6 +21,12 @@
 
 (def max-clients (env :max-clients 128))
 
+(defn num-clients [game-envs]
+  (apply + (map #(-> % val deref :clients count) @game-envs)))
+
+(defn accepting-clients? [game-envs]
+  (< (num-clients game-envs) max-clients))
+
 (defn init-game-env!
   [game-envs game-id]
   (let [game (new-game)
@@ -50,7 +56,7 @@
   (go
     (when-let [join-msg (<! in)]
       (if (and (instance? GameJoinMessage join-msg) (msg/valid? join-msg))
-        (if-not (game-env/max-clients? @game-env)
+        (if (game-env/accepting-clients? @game-env)
           (let [player-id (:player-id join-msg)
                 assoc-player-id #(if (associative? %) (assoc % :player-id player-id) %)
                 player-in (map< assoc-player-id in)
@@ -63,12 +69,6 @@
         (do
           (>! out (msg/->ErrorMessage "You're strange"))
           (close! out))))))
-
-(defn num-clients [game-envs]
-  (apply + (map #(-> % val deref :clients count) @game-envs)))
-
-(defn accepting-clients? [game-envs]
-  (< (num-clients game-envs) max-clients))
 
 (defn register-ws-app!
   [game-envs client-chan]
@@ -101,7 +101,7 @@
              (tmpl/lobby @game-envs))
         (GET "/games/:game-id" [game-id]
              (if-let [game-env (some-> (get @game-envs game-id) deref)]
-               (if-not (game-env/max-clients? game-env)
+               (if (game-env/accepting-clients? game-env)
                  (tmpl/game game-env)
                  (tmpl/error "Game full"))
                (route/not-found (tmpl/game-create game-id))))

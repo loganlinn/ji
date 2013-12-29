@@ -42,9 +42,9 @@
   (-> (apply-message game-msg game-env)
       (step-game-env)))
 
-(defn max-clients? [game-env]
-  (>= (count (:clients game-env))
-      (:max-clients game-env)))
+(defn accepting-clients? [game-env]
+  (< (count (:clients game-env))
+     (:max-clients game-env default-max-clients)))
 
 (defn create-game-env [game-id game join-chan]
   (map->GameEnv {:id game-id
