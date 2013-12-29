@@ -27,9 +27,17 @@
 (defn accepting-clients? [game-envs]
   (< (num-clients game-envs) max-clients))
 
+(defn generate-game-id [game-envs]
+  (let [cs (vec "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        s (apply str (for [i (range 5)] (rand-nth cs)))]
+    (if (contains? @game-envs s)
+      (recur game-envs)
+      s)))
+
 (defn init-game-env!
   [game-envs game-id]
-  (let [game (new-game)
+  (let [game-id (or game-id (generate-game-id game-envs))
+        game (new-game)
         join-chan (chan)
         game-env (atom (game-env/create-game-env game-id game join-chan))
         game-chan (game/go-game game-env)]
@@ -38,13 +46,6 @@
           (println "Game finished" finshed-game)
           (swap! game-envs dissoc (:id finshed-game))))
     game-env))
-
-(let [cs (vec "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")]
-  (defn rand-game-id [game-envs]
-    (let [s (apply str (for [i (range 5)] (rand-nth cs)))]
-      (if (contains? @game-envs s)
-        (recur game-envs)
-        s))))
 
 (defn valid-game-id? [game-id]
   (boolean (re-find #"^[\w-]+$" game-id)))
@@ -95,7 +96,7 @@
                   (-> (resp/response "Game already exists") (resp/status 409))
 
                   :else
-                  (let [game-env (init-game-env! game-envs (or game-id (rand-game-id game-envs)))]
+                  (let [game-env (init-game-env! game-envs game-id)]
                     (resp/redirect-after-post (str "/games/" (:id @game-env)))))))
         (GET "/games" []
              (tmpl/lobby @game-envs))
