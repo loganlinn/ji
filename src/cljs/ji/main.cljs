@@ -95,17 +95,18 @@
       (dom/append! ul (node [:li (card-ui/set-tmpl s)])))))
 
 (defn go-game-summary [container {:keys [game] :as finish-msg}]
-  (go (let [modal (node [:div.reveal-modal.open
-                         {:style "display:block; visibility:visible;"}
-                         [:h2 "Game Complete"]
-                         [:div "game stats..."]
-                         [:a.close-reveal-modal (html->nodes "&#215;")]])
-            close-chan (chan)]
-        (dom/append! container modal)
-        (dom/listen! (sel1 modal :a.close-reveal-modal) :click
-                     (fn [e] (.preventDefault e) (close! close-chan)))
-        (<! close-chan)
-        (dom/remove! modal))))
+  (let [modal (node [:div.reveal-modal.open
+                     {:style "display:block; visibility:visible;"}
+                     [:h2 "Game Complete"]
+                     [:div "game stats..."]
+                     [:a.close-reveal-modal (html->nodes "&#215;")]])
+        close-chan (chan)]
+    (go
+      (dom/append! container modal)
+      (dom/listen! (sel1 modal :a.close-reveal-modal) :click
+                   (fn [e] (.preventDefault e) (close! close-chan)))
+      (<! close-chan)
+      (dom/remove! modal))))
 
 (defn go-game-state
   "Distributes new game state to UI components"
