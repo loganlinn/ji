@@ -3,7 +3,7 @@
   :url "github.com/loganlinn/ji"
   :license {:name "Eclipse Public License" :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/clojurescript "0.0-2030"]
+                 [org.clojure/clojurescript "0.0-2138"]
                  [org.clojure/core.async "0.1.242.0-44b1e3-alpha"]
                  [org.clojure/tools.reader "0.7.10"]
                  [org.clojure/core.match "0.2.0"]
@@ -14,7 +14,7 @@
                  [compojure "1.1.5" :exclusions [ring/ring-core]]
                  [com.keminglabs/jetty7-websockets-async "0.1.0"]
                  [prismatic/dommy "0.1.2"]
-                 ;[prismatic/schema "0.1.8"]
+                 ;[prismatic/schema "0.1.10"]
                  [potemkin "0.3.2"]
                  [rident "0.1.0"]]
   :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}
