@@ -16,7 +16,7 @@
                  [prismatic/dommy "0.1.2"]
                  ;[prismatic/schema "0.1.8"]
                  [potemkin "0.3.2"]
-                 ]
+                 [rident "0.1.0"]]
   :repositories {"sonatype-oss-public" "https://oss.sonatype.org/content/groups/public/"}
   :min-lein-version "2.0.0"
 

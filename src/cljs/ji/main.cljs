@@ -218,7 +218,7 @@
           (let [result (<! result-chan)]
             (if (msg/error? result)
               (show-alert! (:message result) :alert))))))
-  (auto-join!)
+  ;(auto-join!)
   )
 
 

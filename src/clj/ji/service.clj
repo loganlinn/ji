@@ -6,6 +6,7 @@
              [game :as game]]
             [ji.domain.game :refer [new-game game-over?]]
             [ji.domain.messages :as msg]
+            [rident.adj-noun]
             [taoensso.timbre :refer [debugf info]]
             [com.keminglabs.jetty7-websockets-async.core :as ws]
             [clojure.core.async :refer [chan go go-loop <! >! <!! >!! alt! alts! put! close! map> map<]]
@@ -28,11 +29,10 @@
   (< (num-clients game-envs) max-clients))
 
 (defn generate-game-id [game-envs]
-  (let [cs (vec "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-        s (apply str (for [i (range 5)] (rand-nth cs)))]
-    (if (contains? @game-envs s)
+  (let [id (rident.adj-noun/generate)]
+    (if (contains? @game-envs id)
       (recur game-envs)
-      s)))
+      id)))
 
 (defn init-game-env!
   [game-envs game-id]
