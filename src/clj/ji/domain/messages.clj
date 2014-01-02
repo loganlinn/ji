@@ -1,12 +1,5 @@
 (ns ^:shared ji.domain.messages
-  (:require [ji.domain.game :as game]
-            ;[schema.core :as s]
-            ;#+clj [schema.macros :as sm]
-            )
-  ;#+cljs (:require-macros [schema.macros :as sm])
-  )
-
-;(defn valid? [& _] true) ;; TODO
+  (:require [ji.domain.game :as game]))
 
 (defprotocol IMessage
   (valid? [this]))
@@ -36,27 +29,6 @@
 (defrecord PlayerSetMessage [cards]
   IMessage
   (valid? [_] (= (count cards) 3)))
-
-;(def +player-id+ #"^\w{1,16}$")
-
-;(sm/defrecord ErrorMessage
-  ;[message :- s/String])
-
-;(sm/defrecord GameStateMessage
-  ;[game :- s/Any #_game/Game])
-
-;(sm/defrecord GameFinishMessage
-  ;[game :- s/Any #_game/Game])
-
-;(sm/defrecord GameJoinMessage
-  ;[player-id :- +player-id+
-   ;color :- s/Keyword])
-
-;(sm/defrecord GameLeaveMessage
-  ;[player-id :- s/String])
-
-;(sm/defrecord PlayerSetMessage
-  ;[cards :- (s/pred #(= 3 (count %)) #(every? map? %)) #_[(s/one {}) (s/one {}) (s/one {})]])
 
 (defn join-game [& {:as fields}]
   (map->GameJoinMessage fields))

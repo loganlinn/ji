@@ -25,7 +25,6 @@
   :plugins [[lein-cljsbuild "1.0.0-alpha2"]
             [lein-environ "0.4.0"]
             [com.keminglabs/cljx "0.3.2"]]
-  :hooks [cljx.hooks]
   :profiles {:dev {:source-paths ["dev"]
                    :dependencies [[org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.classpath "0.2.0"]
@@ -34,23 +33,10 @@
                    :env {:prod false}}
              :prod {:env {:prod true}}}
 
-  :source-paths ["target/generated/src/clj" "src/clj" "src/cljx"]
+  :source-paths ["src/clj"]
   :test-paths ["test/clj"]
-
-  :cljx {:builds [{:source-paths ["src/cljx"]
-                   :output-path "target/generated/src/clj"
-                   :rules :clj}
-                  {:source-paths ["src/cljx"]
-                   :output-path "target/generated/src/cljs"
-                   :rules :cljs}
-                  {:source-paths ["test/cljx"]
-                   :output-path "target/generated/test/clj"
-                   :rules :clj}
-                  {:source-paths ["test/cljx"]
-                   :output-path "target/generated/test/cljs"
-                   :rules :cljs}]}
   :cljsbuild {:builds {:dev
-                       {:source-paths ["target/generated/src/cljs" "src/cljs"]
+                       {:source-paths ["src/clj/ji/domain" "src/cljs"]
                         :debug true
                         :compiler {:optimizations :whitespace
                                    :debug true
@@ -60,7 +46,7 @@
                                    ;:source-map "resources/public/js/main.js.map"
                                    }}
                        :prod
-                       {:source-paths ["target/generated/src/cljs" "src/cljs"]
+                       {:source-paths ["src/clj/ji/domain" "src/cljs"]
                         :compiler {:optimizations :advanced
                                    :pretty-print false
                                    :static-fns true
