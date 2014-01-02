@@ -34,7 +34,7 @@
                    :env {:prod false}}
              :prod {:env {:prod true}}}
 
-  :source-paths ["target/generated/src/clj" "src/clj"]
+  :source-paths ["target/generated/src/clj" "src/clj" "src/cljx"]
   :test-paths ["test/clj"]
 
   :cljx {:builds [{:source-paths ["src/cljx"]
