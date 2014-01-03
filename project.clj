@@ -35,8 +35,9 @@
 
   :source-paths ["src/clj"]
   :test-paths ["test/clj"]
-  :cljsbuild {:builds {:dev
-                       {:source-paths ["src/clj/ji/domain" "src/cljs"]
+  :cljsbuild {:crossovers [ji.domain]
+              :builds {:dev
+                       {:source-paths ["src/cljs"]
                         :debug true
                         :compiler {:optimizations :whitespace
                                    :debug true
