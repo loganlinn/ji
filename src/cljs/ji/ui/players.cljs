@@ -1,10 +1,11 @@
 (ns ji.ui.players
-  (:require [ji.domain.player :as p]
+  "UI component for displaying game players"
+  (:require [ji.ui :as ui]
+            [ji.domain.player :as p]
             [ji.domain.game :as game :refer [player-offline?]]
             [ji.domain.messages :as msg]
-            [ji.ui.card :refer [card-tmpl]]
-            [ji.util.helpers
-             :refer [event-chan map-source map-sink copy-chan into-chan]]
+            [ji.ui.card :as card]
+            [ji.util.helpers :refer [event-chan]]
             [clojure.set :as s]
             [clojure.string :as str]
             [cljs.core.async :as async
@@ -14,51 +15,69 @@
   (:require-macros
     [dommy.macros :refer [sel sel1 deftemplate node]]
     [cljs.core.async.macros :refer [go alt!]]
-    [cljs.core.match.macros :refer [match]]
-    [ji.util.macros :refer [go-loop]]))
+    [cljs.core.match.macros :refer [match]]))
 
-(deftemplate player-tmpl [self-id [player-id {:keys [sets] :as player}]]
+(defn player-order
+  "Orders the players"
+  [player-id players]
+  (sort-by (fn [[pid plr]] [(= player-id pid)
+                            (p/online? plr)
+                            (count (:sets plr))
+                            pid])
+           >
+           players))
+
+(deftemplate player-tmpl [player-id player sets is-self?]
   (let [online? (p/online? player)]
     [:li.player
      {:data-player-id player-id
       :class (str/join " " [(if online? "online" "offline")
-                            (if (= self-id player-id) "self")])}
-     [:h4 player-id]
+                            (if is-self? "self")])}
+     [:h5
+      [:span.hide-for-small player-id]
+      [:span.player-id-abbr.show-for-small (-> player-id first str/upper-case)]]
      [:span.online-ind]
-     [:span.subheader (format "%d sets" (count sets))]
-     [:ul.sets
-      (for [ji (take 9 sets)]
-        [:li (map card-tmpl ji)])]]))
+     [:span.subheader (str "score: " (:score player))]
+     [:div.sets
+      (map card/set-tmpl (take 9 sets))]]))
 
-(deftemplate players-tmpl [player-id players]
-  ;(println (pr-str (players player-id)))
-  ;(println (pr-str (dissoc players player-id)))
-  [:div.players.row.collapse
-   [:ul.small-12
-    (map (partial player-tmpl player-id)
-         (cons
-           [player-id (players player-id)]
-           (sort-by (fn [[pid plr]]
-                      [(p/online? plr) (count (:sets plr)) pid])
-                    >
-                    (dissoc players player-id))))]])
+(deftemplate players-tmpl [player-id players sets]
+  (let [sets-by-pid (group-by :player-id sets)
+        player-sets #(map :cards (sets-by-pid %))]
+    [:div.row.collapse
+     [:ul.players
+      (map (fn [[pid player]]
+             (player-tmpl pid player (player-sets pid) (= player-id pid)))
+           (player-order player-id players))]]))
 
 (defn go-players-ui [container player-id players-chan]
   (go (loop [players {}]
-        (if-let [players' (<! players-chan)]
+        (match (<! players-chan)
+          nil players
+
+          {:players players' :sets sets}
           (if (= players players')
             (recur players)
-            (let [node (players-tmpl player-id players')]
-              (dom/remove! (sel1 container :.players))
-              (dom/append! (sel1 :#content) node)
+            (let [node (players-tmpl player-id players' sets)]
+              (dom/replace-contents! container node)
               (recur players')))
-          players))))
 
-(defn create! [container player-id players-chan]
-  (dom/append! container (players-tmpl player-id {}))
-  (go-players-ui container player-id players-chan))
+          :else (recur players)))))
 
-(defn destroy!
-  [c container]
-  (go (<! c)
-      (dom/remove! (sel1 container :.players))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Records
+
+(defrecord PlayersComponent [player-id players-chan]
+  ui/IComponent
+  (attach! [component container]
+    (->> (players-tmpl player-id {} [])
+         (dom/replace-contents! container))
+    (go-players-ui container player-id players-chan))
+  (destroy! [component container exit-data]
+    (dom/set-html! container "")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Public
+
+(defn create [player-id players-chan]
+  (->PlayersComponent player-id players-chan))

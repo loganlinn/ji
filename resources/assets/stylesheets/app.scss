@@ -10,7 +10,7 @@
 // Import specific parts of Foundation by commenting the import "foundation"
 // and uncommenting what you want below. You must uncomment the following if customizing
 
-// @import "foundation/components/global"; // *always required
+ @import "foundation/components/global"; // *always required
 // @import "foundation/components/grid";
 
 //
@@ -21,7 +21,7 @@
 //
 
 // @import "foundation/components/visibility";
-// @import "foundation/components/block-grid";
+ @import "foundation/components/block-grid";
 // @import "foundation/components/type";
 // @import "foundation/components/buttons";
 // @import "foundation/components/forms"; // *requires components/buttons
@@ -56,77 +56,157 @@
 
 @import "compass/reset/utilities";
 
-.card {
-  display: inline-block;
+$card-height: 123px;
+$card-width: 73px;
+
+.top-bar {
+  margin-bottom: 0px;
 }
 
-.board {
-  $selected-color: yellow;
-  $bg: #d9d9d9;
-  @include panel($bg);
+#sidebar-left {
+  overflow: auto;
+}
 
-  li {
-    text-align: center;
-    padding: 0;
-  }
-  a {
-    display: inline-block;
-    padding: 1em 1.75em;
-  }
-  .selected {
-    background-color: $selected-color;
-  }
-  .new {
-    background-color: lighten($bg, 10%);
+#content {
+  position: relative;
+  .row, .columns {
+    height: inherit;
   }
 }
-.players {
-  ul {
+
+ul.set {
+  @include block-grid(3, 0px, true);
+  max-width: ($card-width + 2) * 3;
+}
+
+ul.players {
+  @include block-grid(1, 0px, true);
+
+  .player {
+    @include panel($secondary-color, 5px, true);
     margin: 0;
-  }
-  li {
-    @include reset-list-style;
-  }
-}
-.player {
-  & {
-    @include panel;
-    padding: 1em;
-    float:left;
+
     position: relative;
-  }
 
-  &.self {
-    margin-right: 3px;
-  }
+    &:hover .sets {
+      display:block;
+    }
 
-  &:hover .sets {
-    display:block;
-  }
+    &.online .online-ind {
+      background-color: green;
+    }
 
-  &.online .online-ind {
-    background-color: green;
-  }
+    .online-ind {
+      background-color: #ccc;
+      height: 5px;
+      width: 5px;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+    }
 
-  .online-ind {
-    background-color: #ccc;
-    height: 5px;
-    width: 5px;
-    position: absolute;
-    top: 2px;
-    right: 2px;
-  }
-
-  .sets {
-    & {
+    .sets {
       display: none;
     }
-    .card {
-      display: inline;
+
+    .player-id-abbr {
+      width: 100%;
+      text-align: center;
     }
+  }
+}
+
+
+#game-status {
+  @include panel($secondary-color, 5px, true);
+}
+
+@mixin card-rows($rows, $cols:3) {
+  li {
+    height: 100% / $rows;
+  }
+
+  .card-target {
+    padding: 10%;
+  }
+
+  .card {
+    display: block;
+    height: 100%;
+
     img {
-      width: 33px;
-      height: auto;
+      height: 85%;
+    }
+  }
+
+  @for $i from 1 through ($rows - 1) {
+    li:nth-child(n+#{$i * $cols + 1}) {
+      top: ($i * 100%) / $rows;
+    }
+  }
+}
+
+#board {
+  @include panel($secondary-color);
+  height: 100%;
+
+  .board-5 {
+    .cards {
+      @include card-rows(5);
+    }
+  }
+
+  .cards {
+    $each-height: ($card-height + 15px);
+    $cols: 3;
+    $rows: 4;
+    $animate-duration: 0.5s;
+    $selected-color: yellow;
+
+    height: 100%;
+    position: relative;
+    list-style: none;
+
+    @include card-rows(4);
+
+    .card-target {
+      display:block;
+    }
+
+    .selected {
+      background-color: $selected-color;
+    }
+
+    .new a {
+      background-color: lighten($secondary-color, 10%);
+    }
+
+    li {
+      position: absolute;
+      top: 0;
+      width: 100% / $cols;
+      transition: all $animate-duration linear;
+      text-align: center;
+      padding: 0;
+    }
+
+    @for $i from 1 through $cols {
+      li:nth-child(#{$cols}n+#{$i}) {
+        left: (($i - 1) * 100%) / $cols;
+      }
+    }
+  }
+}
+
+#lobby {
+  form.create-game {
+    float: right;
+    margin: 15px 0 0 0;
+  }
+
+  table.games {
+    td.actions {
+      text-align: right;
     }
   }
 }

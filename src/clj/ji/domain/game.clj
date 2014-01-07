@@ -11,6 +11,9 @@
                :color colors
                :number numbers
                :fill fills})
+(def default-board-size 12)
+
+(defrecord Game [deck board players sets])
 
 (defn new-deck []
   (for [s shapes c colors n numbers f fills]
@@ -34,26 +37,25 @@
             (assoc c3 feat (solve-feature feat (feat c1) (feat c2))))
           c1 (keys features)))
 
-(defn solve-board ;; TODO Return LAZY sequence
-  "Returns sets in board"
+(defn solve-board
+  "Returns lazy sequence of sets on board"
   [board]
-  (let [s-board (set board)]
-    (reduce (fn [sets [a b]]
-              (let [c (solve-set a b)]
-                (if (contains? s-board c)
-                  (conj sets #{a b c})
-                  sets)))
-            #{}
-            (for [a board b board :when (not= a b)] [a b]))))
-
-(defrecord Game [deck board players])
+  (let [solve-pair (fn [[c1 c2]]
+                     (if-let [c3 (board (solve-set c1 c2))]
+                       #{c1 c2 c3}))]
+    (->> (for [a board b board :when (not= a b)] [a b])
+         (map solve-pair)
+         (keep identity)
+         (distinct))))
 
 (defn new-game []
   (map->Game {:deck (-> (new-deck) (shuffle))
               :board #{}
-              :players {}}))
+              :players {}
+              :sets []}))
 
-(defn game-over? [game] (empty? (:deck game)))
+(defn game-over? [{:keys [deck board]}]
+  (empty? (solve-board (into board deck))))
 
 (defn player [game player-id]
   (get-in game [:players player-id]))
@@ -86,15 +88,17 @@
 
 (defn take-set [game player-id cards]
   (println "TAKE SET" player-id cards)
-  (-> game
-      (update-in [:board] s/difference (set cards))
-      (update-player player-id update-in [:sets] conj cards)))
+  (let [cards (set cards)]
+    (-> game
+        (update-in [:board] s/difference cards)
+        (update-in [:sets] conj {:player-id player-id :cards cards})
+        (update-player player-id p/take-set cards))))
 
 (defn revoke-set [game player-id]
   (println "REVOKE SET" player-id)
-  (update-player game player-id update-in [:sets] drop-last))
+  (update-player game player-id p/revoke-set))
 
-(defn draw-cards [n {:keys [deck board] :as game}]
+(defn draw-cards [{:keys [deck board] :as game} n]
   (assoc game
          :deck (drop n deck)
          :board (into board (take n deck))))
@@ -102,3 +106,33 @@
 (defn valid-set? [game cards]
   (and (s/subset? cards (:board game))
        (is-set? cards)))
+
+(defn player-sets [game player-id]
+  (->> (:sets game)
+       (filter #(= player-id (:player-id %)))
+       (map :cards)))
+
+(defn fill-board
+  "Returns game after filling board to 12 cards"
+  ([game] (fill-board game default-board-size))
+  ([{:keys [board deck] :as game} board-size]
+   (let [num-add (min (- board-size (count board)) (count deck))]
+     (if (pos? num-add)
+       (draw-cards game num-add)
+       game))))
+
+(defn fix-setless-board
+  "If game's board contains sets, returns game as-is, otherwise, adds 3 cards
+  until at least 1 set exists on board"
+  [game]
+  (loop [game game]
+    (if (and (seq (:deck game))
+             (empty? (solve-board (:board game))))
+      (recur (draw-cards game 3))
+      game)))
+
+(defn update-board
+  "Deals cards to game board, presumably after a player finds a set, returning
+  updated game state"
+  [game]
+  (-> game (fill-board) (fix-setless-board)))

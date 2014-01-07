@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+APP_PATH="$(cd $(dirname $0) && cd .. && pwd)"
+
+rm $APP_PATH/resources/public/js/main.js 2>/dev/null
+rm $APP_PATH/resources/public/stylesheets/app.css 2>/dev/null
