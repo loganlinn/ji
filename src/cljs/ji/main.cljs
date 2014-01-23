@@ -9,7 +9,7 @@
             [ji.ui.board :as board-ui]
             [ji.ui.players :as players-ui]
             [ji.ui.status :as status-ui]
-            [ji.websocket :as websocket]
+            [cljs-websockets-async.core :as websocket]
             [ji.util.helpers :refer [event-chan]]
             [clojure.set :as s]
             [clojure.string :as str]
