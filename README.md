@@ -5,6 +5,10 @@ using [core.async](https://github.com/clojure/core.async) and WebSockets.
 
 Work in progress, more documentation to come.
 
+## Demo
+
+Try <http://ji.loganlinn.com/>
+
 ## License
 
 SET and its logo and slogan are registered trademarks of Cannei, LLC.
