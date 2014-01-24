@@ -5,6 +5,24 @@ using [core.async](https://github.com/clojure/core.async) and WebSockets.
 
 Work in progress, more documentation to come.
 
+## Usage
+
+### Running Locally
+
+Dependencies
+*   [leiningen](https://github.com/technomancy/leiningen)
+*   [bundler](http://bundler.io/)
+*   [shoreman](https://github.com/hecticjeff/shoreman) (optional)
+
+```sh
+git clone git@github.com:loganlinn/ji.git
+cd ji
+./bin/build
+shoreman
+```
+
+Have a look at the [Procfile][Procfile] if you want to run it without shoreman.
+
 ## Demo
 
 Try <http://ji.loganlinn.com/>
