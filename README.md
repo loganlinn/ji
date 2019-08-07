@@ -3,8 +3,6 @@
 A web version of [SET card game](http://www.setgame.com/set) in Clojure(Script)
 using [core.async](https://github.com/clojure/core.async) and WebSockets.
 
-Work in progress, more documentation to come.
-
 ## Usage
 
 ### Running Locally
@@ -23,9 +21,6 @@ shoreman
 
 Have a look at the [Procfile][Procfile] if you want to run it without shoreman.
 
-## Demo
-
-Try <http://ji.loganlinn.com/>
 
 ## License
 
